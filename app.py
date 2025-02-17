@@ -111,6 +111,17 @@ def login():
             return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
     return render_template("login.html")
 
+# 📌 Ruta del Dashboard
+@app.route('/dashboard')
+def dashboard():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))  # 🔹 Si no hay sesión, redirige a login
+
+    nombre = session["nombre"]
+    apellido = session["apellido"]
+
+    return render_template("dashboard.html", nombre=nombre, apellido=apellido)
+
 # 📌 Ruta de la encuesta
 @app.route('/encuesta', methods=['GET', 'POST'])
 def encuesta():
