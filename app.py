@@ -11,6 +11,44 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
 
+def verificar_base_datos():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Tabla de usuarios
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        contraseña TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        apellido TEXT NOT NULL,
+        matematicas INTEGER,
+        historia INTEGER,
+        fisica INTEGER,
+        quimica INTEGER,
+        biologia INTEGER,
+        ingles INTEGER,
+        geografia INTEGER
+    )
+    """)
+
+    # Tabla de respuestas (Guarda respuestas por usuario)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS respuestas (
+        id_usuario INTEGER PRIMARY KEY,
+        pregunta_1 TEXT,
+        pregunta_2 TEXT,
+        pregunta_3 TEXT,
+        pregunta_4 TEXT,
+        pregunta_5 TEXT,
+        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
 # 📌 Preguntas de la encuesta
 preguntas = [
     {"texto": "Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
