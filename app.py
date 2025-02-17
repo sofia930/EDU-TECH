@@ -346,27 +346,37 @@ def dashboard():
 
     return render_template("dashboard.html", nombre=nombre, apellido=apellido)
 
-# 📌 Ruta de la encuesta
-@app.route('/encuesta', methods=['GET', 'POST'])
-def encuesta():
+# 📌 Ruta de resultados de la encuesta
+@app.route('/resultado', methods=['POST'])
+def resultado():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))  # Redirigir si no ha iniciado sesión
+        return redirect(url_for("login"))  
 
     usuario_id = session["usuario_id"]
+    nombre = session["nombre"]
+    apellido = session["apellido"]
+
+    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
+
+    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    for i, pregunta in enumerate(preguntas):
+        respuesta = respuestas.get(f'pregunta{i}')
+        if respuesta:
+            estilos[pregunta["estilo"]] += (1 if respuesta == "+" else 0)
 
-    # Obtener respuestas guardadas del usuario
-    cursor.execute("SELECT pregunta_1, pregunta_2, pregunta_3, pregunta_4, pregunta_5 FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_guardadas = cursor.fetchone()
+            cursor.execute("""
+                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id_usuario, pregunta) 
+                DO UPDATE SET respuesta = excluded.respuesta
+            """, (usuario_id, pregunta["texto"], respuesta))
+
+    conn.commit()
     conn.close()
-
-    respuestas_dict = {}
-    if respuestas_guardadas:
-        for i, respuesta in enumerate(respuestas_guardadas):
-            respuestas_dict[f'pregunta_{i+1}'] = respuesta  # Convertir a diccionario
-
-    return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_dict)
 
 @app.route('/resultado')
 def resultado():
