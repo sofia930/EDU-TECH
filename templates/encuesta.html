@@ -9,14 +9,10 @@
 <body>
 
     <form method="POST" action="{{ url_for('encuesta') }}">
-        {% for i, pregunta in enumerate(preguntas) %}
+        {% for pregunta in preguntas %}
             <p>{{ pregunta.texto }}</p>
-            <label>
-                <input type="radio" name="pregunta{{ i }}" value="+" required> Sí
-            </label>
-            <label>
-                <input type="radio" name="pregunta{{ i }}" value="-"> No
-            </label>
+            <label><input type="radio" name="pregunta{{ loop.index0 }}" value="+" required> Sí</label>
+            <label><input type="radio" name="pregunta{{ loop.index0 }}" value="-"> No</label>
             <br><br>
         {% endfor %}
     
