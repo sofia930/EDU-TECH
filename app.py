@@ -145,8 +145,7 @@ def encuesta():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login")) 
-
+    return redirect(url_for("login"))
 
 
 if __name__ == '__main__':
