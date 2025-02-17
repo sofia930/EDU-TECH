@@ -161,16 +161,20 @@ def encuesta():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        for i, pregunta in enumerate(preguntas):
-            respuesta = request.form.get(f'pregunta{i}')
-            cursor.execute("INSERT INTO respuestas (id_usuario, pregunta, respuesta) VALUES (?, ?, ?)",
-                           (session["usuario_id"], pregunta["texto"], respuesta))
-        conn.commit()
-        conn.close()
+        df = pd.read_csv(DATASET_PATH)
+
+        # Buscar al usuario en el dataset
+        index = df[(df['Nombre'].str.lower() == session["nombre"].lower()) & 
+                   (df['Apellido'].str.lower() == session["apellido"].lower())].index
+
+        if not index.empty:
+            for i, pregunta in enumerate(preguntas):
+                df.at[index[0], f"Pregunta_{i+1}"] = request.form.get(f'pregunta{i}')
+
+        df.to_csv(DATASET_PATH, index=False)
+
         return redirect(url_for("resultado"))
-    
+
     return render_template("encuesta.html", preguntas=preguntas)
 
 @app.route('/resultado', methods=['POST'])
