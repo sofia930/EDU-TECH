@@ -4,12 +4,12 @@ import os
 import pandas as pd
 
 app = Flask(__name__)
-app.secret_key = "supersecreto"  # Clave secreta para sesiones
+app.secret_key = "supersecreto"
 
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'database.db')  # Ruta de la base de datos
-DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')  # Ruta del dataset CSV
+DB_PATH = os.path.join(BASE_DIR, 'database.db')
+DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
 
 # 📌 Preguntas de la encuesta
 preguntas = [
@@ -31,48 +31,41 @@ def verificar_base_datos():
         email TEXT UNIQUE NOT NULL,
         contraseña TEXT NOT NULL,
         nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        matematicas INTEGER,
-        historia INTEGER,
-        fisica INTEGER,
-        quimica INTEGER,
-        biologia INTEGER,
-        ingles INTEGER,
-        geografia INTEGER
+        apellido TEXT NOT NULL
     )
     """)
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS respuestas (
+        id_respuesta INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_usuario INTEGER,
+        pregunta TEXT,
+        respuesta TEXT,
+        FOREIGN KEY(id_usuario) REFERENCES usuarios(id_usuario)
+    )
+    """)
+    
     conn.commit()
     conn.close()
 
-# 📌 Inicializar la base de datos
 verificar_base_datos()
 
-# 📌 Función para guardar estudiantes en el CSV
-def guardar_en_csv(nombre, apellido, email):
-    datos_nuevo = pd.DataFrame([[nombre, apellido, email]], columns=["Nombre", "Apellido", "Email"])
-    if os.path.exists(DATASET_PATH):
-        datos_existentes = pd.read_csv(DATASET_PATH)
-        datos_actualizados = pd.concat([datos_existentes, datos_nuevo], ignore_index=True)
-    else:
-        datos_actualizados = datos_nuevo
-    datos_actualizados.to_csv(DATASET_PATH, index=False)
-
-# 📌 Ruta principal (Redirige al registro si no ha iniciado sesión)
+# 📌 Ruta principal
 @app.route('/')
 def home():
     if "usuario_id" in session:
         return redirect(url_for("encuesta"))
     return redirect(url_for("registro"))
 
-# 📌 Ruta de registro de estudiante
+# 📌 Ruta de registro
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
-        nombre = request.form.get("nombre").strip()
-        apellido = request.form.get("apellido").strip()
         email = request.form.get("email").strip().lower()
         contraseña = request.form.get("contraseña").strip()
-        
+        nombre = request.form.get("nombre").strip()
+        apellido = request.form.get("apellido").strip()
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
@@ -81,15 +74,18 @@ def registro():
         if usuario_existente:
             conn.close()
             return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
-        
+
         cursor.execute("INSERT INTO usuarios (email, contraseña, nombre, apellido) VALUES (?, ?, ?, ?)", 
                        (email, contraseña, nombre, apellido))
         conn.commit()
         conn.close()
-        
-        guardar_en_csv(nombre, apellido, email)  # Guardar en CSV
+
+        # Guardar en dataset
+        df = pd.read_csv(DATASET_PATH)
+        df.loc[len(df)] = [nombre, apellido, email]
+        df.to_csv(DATASET_PATH, index=False)
+
         return redirect(url_for("login"))
-    
     return render_template("registro.html")
 
 # 📌 Ruta de login
@@ -98,7 +94,7 @@ def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
         contraseña = request.form["contraseña"]
-        
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = ? AND contraseña = ?", (email, contraseña))
@@ -113,7 +109,6 @@ def login():
             return redirect(url_for("encuesta"))
         else:
             return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
-    
     return render_template("login.html")
 
 # 📌 Ruta de la encuesta
@@ -121,24 +116,35 @@ def login():
 def encuesta():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
+
     if request.method == "POST":
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        for i, pregunta in enumerate(preguntas):
+            respuesta = request.form.get(f'pregunta{i}')
+            cursor.execute("INSERT INTO respuestas (id_usuario, pregunta, respuesta) VALUES (?, ?, ?)",
+                           (session["usuario_id"], pregunta["texto"], respuesta))
+        conn.commit()
+        conn.close()
         return redirect(url_for("resultado"))
+    
     return render_template("encuesta.html", preguntas=preguntas)
 
-# 📌 Ruta de resultados de la encuesta
-@app.route('/resultado', methods=['POST'])
+# 📌 Ruta de resultados
+@app.route('/resultado', methods=['GET'])
 def resultado():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
-    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
-    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
-    for i in range(len(preguntas)):
-        if respuestas.get(f'pregunta{i}') == '+':
-            estilos[preguntas[i]['estilo']] += 1  
-    estilo_predominante = max(estilos, key=estilos.get)
-    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], estilo=estilo_predominante)
 
-# 📌 Ruta para cerrar sesión
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (session["usuario_id"],))
+    respuestas = cursor.fetchall()
+    conn.close()
+
+    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], respuestas=respuestas)
+
+# 📌 Ruta de cerrar sesión
 @app.route("/logout")
 def logout():
     session.clear()
