@@ -6,7 +6,7 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "supersecreto"
 
-# Rutas de archivos
+# 📌 Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset.csv')  # Ruta del dataset
@@ -55,11 +55,11 @@ def registro():
         apellido = request.form.get("apellido").strip().title()
 
         # 📌 1️⃣ Verificar si el email ya está en el dataset
-        try:
+        if os.path.exists(DATASET_PATH):
             df = pd.read_csv(DATASET_PATH, encoding="utf-8")
             if email in df["email"].values:
                 return render_template("registro.html", error="⚠️ Este email ya está registrado en el dataset.")
-        except FileNotFoundError:
+        else:
             df = pd.DataFrame(columns=["email", "nombre", "apellido", "contraseña"])
 
         # 📌 2️⃣ Conectar con SQLite y verificar si el usuario ya está registrado
@@ -78,22 +78,16 @@ def registro():
         conn.commit()
         conn.close()
 
-# 📌 4️⃣ Agregar el usuario al dataset
-nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
-                              columns=["email", "nombre", "apellido", "contraseña"])
+        # 📌 4️⃣ Agregar el usuario al dataset sin sobrescribir el archivo
+        nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
+                                      columns=["email", "nombre", "apellido", "contraseña"])
+        
+        df = pd.concat([df, nuevo_registro], ignore_index=True)  # Agregar nuevo usuario
+        df.to_csv(DATASET_PATH, index=False, encoding="utf-8")
 
-# 📌 Verificar si dataset.csv ya existe
-if os.path.exists(DATASET_PATH):
-    df = pd.read_csv(DATASET_PATH, encoding="utf-8")  # Leer el dataset existente
-    df = pd.concat([df, nuevo_registro], ignore_index=True)  # Agregar nuevo usuario
-else:
-    df = nuevo_registro  # Si no existe, crea el dataframe desde cero
+        return redirect(url_for("login"))  # ✅ Redirige al login
 
-# 📌 Guardar los datos sin sobrescribir el archivo
-df.to_csv(DATASET_PATH, index=False, encoding="utf-8", mode='w')
-
-return redirect(url_for("login"))  # ✅ Redirige al login
-
+    return render_template("registro.html")
 
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
@@ -152,7 +146,6 @@ def encuesta():
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
 
 if __name__ == '__main__':
     app.run(debug=True)
