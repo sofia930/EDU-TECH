@@ -66,13 +66,13 @@ def registro():
         nombre = request.form.get("nombre").strip().title()
         apellido = request.form.get("apellido").strip().title()
 
-        matematicas = request.form.get("matematicas") or 0
-        historia = request.form.get("historia") or 0
-        fisica = request.form.get("fisica") or 0
-        quimica = request.form.get("quimica") or 0
-        biologia = request.form.get("biologia") or 0
-        ingles = request.form.get("ingles") or 0
-        geografia = request.form.get("geografia") or 0
+        matematicas = int(request.form.get("matematicas") or 0)
+        historia = int(request.form.get("historia") or 0)
+        fisica = int(request.form.get("fisica") or 0)
+        quimica = int(request.form.get("quimica") or 0)
+        biologia = int(request.form.get("biologia") or 0)
+        ingles = int(request.form.get("ingles") or 0)
+        geografia = int(request.form.get("geografia") or 0)
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
