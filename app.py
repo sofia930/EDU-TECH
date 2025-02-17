@@ -98,7 +98,7 @@ def login():
             session["nombre"] = usuario[1]
             session["apellido"] = usuario[2]
             session["email"] = email  
-            return redirect(url_for("dashboard"))  # ✅ Redirige al Dashboard en vez de la encuesta
+            return redirect(url_for("dashboard"))  # ✅ Redirige al Dashboard
         else:
             return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
 
