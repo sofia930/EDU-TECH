@@ -78,15 +78,20 @@ def registro():
         conn.commit()
         conn.close()
 
-        # 📌 4️⃣ Agregar el usuario al dataset
-        nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
-                                      columns=["email", "nombre", "apellido", "contraseña"])
-        df = pd.concat([df, nuevo_registro], ignore_index=True)
-        df.to_csv(DATASET_PATH, index=False, encoding="utf-8")
+       # 📌 4️⃣ Agregar el usuario al dataset
+nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
+                              columns=["email", "nombre", "apellido", "contraseña"])
 
-        return redirect(url_for("login"))  # ✅ Redirige al login
+# 📌 Asegurarse de que el archivo dataset.csv existe antes de escribir
+if os.path.exists(DATASET_PATH):
+    df = pd.read_csv(DATASET_PATH, encoding="utf-8")  # Leer el dataset
+    df = pd.concat([df, nuevo_registro], ignore_index=True)  # Agregar nuevo usuario
+else:
+    df = nuevo_registro  # Si no existe, crea el dataframe desde cero
 
-    return render_template("registro.html")
+df.to_csv(DATASET_PATH, index=False, encoding="utf-8")  # Guardar en CSV
+
+return redirect(url_for("login"))  # ✅ Redirige al login
 
 
 # 📌 Ruta de login
