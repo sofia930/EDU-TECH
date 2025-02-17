@@ -56,7 +56,7 @@ def home():
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
     return redirect(url_for("registro"))  # Si no está logueado, lo lleva a registro
 # 📌 Ruta de registro
-
+a
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
