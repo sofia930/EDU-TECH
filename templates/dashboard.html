@@ -8,13 +8,15 @@
 </head>
 <body>
     <h1>Bienvenido, {{ nombre }} {{ apellido }}</h1>
-    
+
     <p>Este es tu panel de control.</p>
-
-    <!-- Enlace para ir a la encuesta -->
+    
     <a href="{{ url_for('encuesta') }}" class="btn btn-primary">Ir a la encuesta</a>
-
+    <a href="{{ url_for('ver_respuestas') }}" class="btn btn-secondary">Ver Respuestas</a>
+    
     <br><br>
+    
+    <a href="{{ url_for('logout') }}">Cerrar sesión</a>
 
     <!-- Enlace para cerrar sesión -->
     <a href="{{ url_for('logout') }}">Cerrar sesión</a>
