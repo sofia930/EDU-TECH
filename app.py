@@ -56,6 +56,7 @@ def home():
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
     return redirect(url_for("registro"))  # Si no está logueado, lo lleva a registro
 # 📌 Ruta de registro
+
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -64,8 +65,19 @@ def registro():
         nombre = request.form.get("nombre").strip()
         apellido = request.form.get("apellido").strip()
 
+        # Obtener las calificaciones
+        matematicas = request.form.get("matematicas")
+        historia = request.form.get("historia")
+        fisica = request.form.get("fisica")
+        quimica = request.form.get("quimica")
+        biologia = request.form.get("biologia")
+        ingles = request.form.get("ingles")
+        geografia = request.form.get("geografia")
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
+
+        # Verificar si el usuario ya existe
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
         usuario_existente = cursor.fetchone()
 
@@ -73,18 +85,40 @@ def registro():
             conn.close()
             return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
 
-        cursor.execute("INSERT INTO usuarios (email, contraseña, nombre, apellido) VALUES (?, ?, ?, ?)", 
-                       (email, contraseña, nombre, apellido))
+        # Insertar el nuevo usuario en SQLite
+        cursor.execute("""
+            INSERT INTO usuarios (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia))
+
         conn.commit()
         conn.close()
 
-        # Guardar en dataset
+        # **Guardar en el dataset CSV**
         df = pd.read_csv(DATASET_PATH)
-        df.loc[len(df)] = [nombre, apellido, email]
+
+        # Crear una nueva fila con los datos
+        nueva_fila = pd.DataFrame({
+            "Nombre": [nombre],
+            "Apellido": [apellido],
+            "Email": [email],
+            "Matematicas": [matematicas],
+            "Historia": [historia],
+            "Fisica": [fisica],
+            "Quimica": [quimica],
+            "Biologia": [biologia],
+            "Ingles": [ingles],
+            "Geografia": [geografia]
+        })
+
+        # Agregar la fila al dataset
+        df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv(DATASET_PATH, index=False)
 
-        return redirect(url_for("login"))
+        return redirect(url_for("login"))  # Redirigir al login después de registrarse
+
     return render_template("registro.html")
+
 
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
