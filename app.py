@@ -11,15 +11,6 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset.csv')  # Ruta del dataset
 
-# 📌 Preguntas de la encuesta
-preguntas = [
-    {"texto": "Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
-    {"texto": "Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
-    {"texto": "Muchas veces actúo sin mirar las consecuencias.", "estilo": "Activo"},
-    {"texto": "Normalmente trato de resolver los problemas metódicamente y paso a paso.", "estilo": "Teórico"},
-    {"texto": "Creo que los formalismos coartan y limitan la actuación libre de las personas.", "estilo": "Activo"},
-]
-
 # 📌 Verificar si la base de datos existe y crearla si no
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
@@ -81,8 +72,14 @@ def registro():
         # 📌 4️⃣ Agregar el usuario al dataset sin sobrescribir el archivo
         nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
                                       columns=["email", "nombre", "apellido", "contraseña"])
-        
-        df = pd.concat([df, nuevo_registro], ignore_index=True)  # Agregar nuevo usuario
+
+        # 📌 Verificar si dataset.csv ya existe y agregar los datos sin sobrescribir
+        if os.path.exists(DATASET_PATH):
+            df = pd.read_csv(DATASET_PATH, encoding="utf-8")
+            df = pd.concat([df, nuevo_registro], ignore_index=True)
+        else:
+            df = nuevo_registro  # Si no existe, crea el dataframe desde cero
+
         df.to_csv(DATASET_PATH, index=False, encoding="utf-8")
 
         return redirect(url_for("login"))  # ✅ Redirige al login
