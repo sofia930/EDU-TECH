@@ -60,7 +60,6 @@ def registro():
             if email in df["email"].values:
                 return render_template("registro.html", error="⚠️ Este email ya está registrado en el dataset.")
         except FileNotFoundError:
-            # Si el archivo no existe, lo creamos después
             df = pd.DataFrame(columns=["email", "nombre", "apellido", "contraseña"])
 
         # 📌 2️⃣ Conectar con SQLite y verificar si el usuario ya está registrado
@@ -88,6 +87,7 @@ def registro():
         return redirect(url_for("login"))  # ✅ Redirige al login
 
     return render_template("registro.html")
+
 
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
