@@ -42,17 +42,6 @@ def verificar_base_datos():
     )
     """)
 
-    # Crear tabla de respuestas, permitiendo actualizar respuestas
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS respuestas (
-        id_usuario INTEGER,
-        pregunta TEXT NOT NULL,
-        respuesta TEXT,
-        PRIMARY KEY (id_usuario, pregunta),
-        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-    )
-    """)
-
     conn.commit()
     conn.close()
 
