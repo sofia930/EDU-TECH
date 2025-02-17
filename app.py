@@ -259,6 +259,12 @@ def verificar_base_datos():
 
 verificar_base_datos()
 
+# 📌 Ruta principal (Muestra la bienvenida)
+@app.route('/')
+def home():
+    return render_template("bienvenida.html")  
+
+
 @app.route('/')
 def home():
     if "usuario_id" in session:
@@ -328,11 +334,6 @@ def registro():
 
     return render_template("registro.html")
 
-# 📌 Ruta principal (Muestra la bienvenida)
-@app.route('/')
-def home():
-    return render_template("bienvenida.html")
-
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -399,44 +400,37 @@ def resultado():
     conn.commit()
     conn.close()
 
-@app.route('/resultado')
+# 📌 Ruta de resultados de la encuesta
+@app.route('/resultado', methods=['POST'])
 def resultado():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("login"))  
 
-    # Obtener respuestas de la encuesta desde la sesión
-    respuestas = session.get("respuestas", {})
+    usuario_id = session["usuario_id"]
+    nombre = session["nombre"]
+    apellido = session["apellido"]
 
-    # Inicializar los estilos de aprendizaje
+    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
+
     estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
 
-    for i, pregunta in enumerate(preguntas):
-        respuesta = respuestas.get(f'pregunta_{i+1}')
-        if respuesta == '+':
-            estilos[pregunta["estilo"]] += 1  
-
-    # Determinar el estilo predominante
-    estilo_predominante = max(estilos, key=estilos.get)
-
-    # Obtener rendimiento académico desde la base de datos
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT matematicas, historia, fisica, quimica, biologia, ingles, geografia
-        FROM usuarios WHERE id_usuario = ?
-    """, (session["usuario_id"],))
     
-    rendimiento = cursor.fetchone()
+    for i, pregunta in enumerate(preguntas):
+        respuesta = respuestas.get(f'pregunta{i}')
+        if respuesta:
+            estilos[pregunta["estilo"]] += (1 if respuesta == "+" else 0)
+
+            cursor.execute("""
+                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id_usuario, pregunta) 
+                DO UPDATE SET respuesta = excluded.respuesta
+            """, (usuario_id, pregunta["texto"], respuesta))
+
+    conn.commit()
     conn.close()
-
-    if rendimiento:
-        materias = ["Matemáticas", "Historia", "Física", "Química", "Biología", "Inglés", "Geografía"]
-        rendimiento_dict = {materias[i]: rendimiento[i] for i in range(len(materias))}
-    else:
-        rendimiento_dict = {}
-
-    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], 
-                           estilo=estilo_predominante, rendimiento=rendimiento_dict, respuestas=respuestas)
 
 @app.route("/ver_progreso")
 def ver_progreso():
@@ -454,6 +448,30 @@ def ver_progreso():
     conn.close()
 
     return render_template("progreso.html", respuestas=respuestas)
+
+  @app.route('/guardar_respuestas', methods=['POST'])
+def guardar_respuestas():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    for i, pregunta in enumerate(preguntas):
+        respuesta = request.form.get(f'pregunta{i}')
+        if respuesta:  # Solo guarda respuestas marcadas
+            cursor.execute("""
+                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id_usuario, pregunta) 
+                DO UPDATE SET respuesta = excluded.respuesta
+            """, (usuario_id, pregunta["texto"], respuesta))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("ver_progreso"))  # ✅ Después de guardar, ir al progreso 
 
 # 📌 Ruta de cerrar sesión
 @app.route("/logout")
