@@ -196,21 +196,23 @@ def dashboard():
 @app.route('/encuesta', methods=['GET', 'POST'])
 def encuesta():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("login"))  # Redirigir si no ha iniciado sesión
 
-    if request.method == "POST":
-        respuestas_usuario = {}
+    usuario_id = session["usuario_id"]
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
-        for i, pregunta in enumerate(preguntas):
-            respuestas_usuario[f'pregunta_{i+1}'] = request.form.get(f'pregunta{i}')
+    # Obtener respuestas guardadas del usuario
+    cursor.execute("SELECT pregunta_1, pregunta_2, pregunta_3, pregunta_4, pregunta_5 FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    respuestas_guardadas = cursor.fetchone()
+    conn.close()
 
-        # Guardar respuestas en la sesión (solo en memoria, NO en el CSV)
-        session["respuestas"] = respuestas_usuario
+    respuestas_dict = {}
+    if respuestas_guardadas:
+        for i, respuesta in enumerate(respuestas_guardadas):
+            respuestas_dict[f'pregunta_{i+1}'] = respuesta  # Convertir a diccionario
 
-        return redirect(url_for("resultado"))  
-
-    return render_template("encuesta.html", preguntas=preguntas)
-
+    return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_dict)
 
 @app.route('/resultado')
 def resultado():
