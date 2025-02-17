@@ -9,14 +9,13 @@ app.secret_key = "supersecreto"
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
-DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
+DATASET_PATH = os.path.join(BASE_DIR, 'datos.csv')  # Ubicación del dataset
 
-# 📌 Verificar la estructura de la base de datos
+# 📌 Verificar y crear la base de datos si no existe
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Tabla de usuarios
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +33,6 @@ def verificar_base_datos():
     )
     """)
 
-    # Tabla de respuestas (Guarda respuestas por usuario)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS respuestas (
         id_usuario INTEGER,
@@ -59,21 +57,15 @@ preguntas = [
     {"texto": "Creo que los formalismos coartan y limitan la actuación libre de las personas.", "estilo": "Activo"},
 ]
 
-# 📌 Ruta principal (Muestra la bienvenida)
-@app.route('/')
-def home():
-    return render_template("bienvenida.html")
-
-# 📌 Ruta de registro
+# 📌 Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
         email = request.form.get("email").strip().lower()
         contraseña = request.form.get("contraseña").strip()
-        nombre = request.form.get("nombre").strip()
-        apellido = request.form.get("apellido").strip()
+        nombre = request.form.get("nombre").strip().title()
+        apellido = request.form.get("apellido").strip().title()
 
-        # Obtener las calificaciones
         matematicas = request.form.get("matematicas")
         historia = request.form.get("historia")
         fisica = request.form.get("fisica")
@@ -84,25 +76,36 @@ def registro():
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-
-        # Verificar si el usuario ya existe
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
         usuario_existente = cursor.fetchone()
 
         if usuario_existente:
             conn.close()
-            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
+            return render_template("registro.html", error="⚠️ Este email ya está registrado.")
 
-        # Insertar el nuevo usuario en SQLite
         cursor.execute("""
-            INSERT INTO usuarios (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO usuarios (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia))
 
         conn.commit()
         conn.close()
 
-        return redirect(url_for("login"))  # Redirigir al login después de registrarse
+        # Guardar en el dataset CSV
+        df = pd.read_csv(DATASET_PATH) if os.path.exists(DATASET_PATH) else pd.DataFrame(columns=[
+            "Nombre", "Apellido", "Email", "Matematicas", "Historia", "Fisica", "Quimica", "Biologia", "Ingles", "Geografia"
+        ])
+
+        nueva_fila = pd.DataFrame({
+            "Nombre": [nombre], "Apellido": [apellido], "Email": [email],
+            "Matematicas": [matematicas], "Historia": [historia], "Fisica": [fisica],
+            "Quimica": [quimica], "Biologia": [biologia], "Ingles": [ingles], "Geografia": [geografia]
+        })
+
+        df = pd.concat([df, nueva_fila], ignore_index=True)
+        df.to_csv(DATASET_PATH, index=False)
+
+        return redirect(url_for("login"))
 
     return render_template("registro.html")
 
@@ -123,10 +126,10 @@ def login():
             session["usuario_id"] = usuario[0]
             session["nombre"] = usuario[1]
             session["apellido"] = usuario[2]
-            session["email"] = email
             return redirect(url_for("encuesta"))
-        else:
-            return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
+
+        return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
+
     return render_template("login.html")
 
 # 📌 Ruta de la encuesta
@@ -139,12 +142,12 @@ def encuesta():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Obtener respuestas guardadas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_guardadas = dict(cursor.fetchall())
+    respuestas_previas = dict(cursor.fetchall())
+
     conn.close()
 
-    return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_guardadas)
+    return render_template("encuesta.html", preguntas=preguntas, respuestas_previas=respuestas_previas)
 
 # 📌 Guardar respuestas
 @app.route('/guardar_respuestas', methods=['POST'])
@@ -171,7 +174,7 @@ def guardar_respuestas():
 
     return redirect(url_for("ver_progreso"))
 
-# 📌 Ruta para ver el progreso
+# 📌 Ver progreso
 @app.route("/ver_progreso")
 def ver_progreso():
     if "usuario_id" not in session:
@@ -180,8 +183,10 @@ def ver_progreso():
     usuario_id = session["usuario_id"]
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
     respuestas = cursor.fetchall()
+    
     conn.close()
 
     return render_template("progreso.html", respuestas=respuestas)
