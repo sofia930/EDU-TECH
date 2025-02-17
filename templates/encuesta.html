@@ -8,8 +8,6 @@
 </head>
 <body>
 
-    <h2>Encuesta de Estilo de Aprendizaje</h2>
-
     <form method="POST" action="{{ url_for('encuesta') }}">
         {% for i, pregunta in enumerate(preguntas) %}
             <p>{{ pregunta.texto }}</p>
@@ -26,7 +24,6 @@
     </form>
     
     <a href="{{ url_for('dashboard') }}">Volver al Dashboard</a>
-
 </body>
 </html>
 
