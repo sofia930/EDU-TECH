@@ -41,6 +41,10 @@ def verificar_base_datos():
 
 verificar_base_datos()
 
+@app.route('/')
+def home():
+    return render_template("bienvenida.html")  
+
 # 📌 Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
