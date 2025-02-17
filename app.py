@@ -66,13 +66,13 @@ def registro():
         nombre = request.form.get("nombre").strip().title()
         apellido = request.form.get("apellido").strip().title()
 
-        matematicas = request.form.get("matematicas")
-        historia = request.form.get("historia")
-        fisica = request.form.get("fisica")
-        quimica = request.form.get("quimica")
-        biologia = request.form.get("biologia")
-        ingles = request.form.get("ingles")
-        geografia = request.form.get("geografia")
+        matematicas = request.form.get("matematicas") or 0
+        historia = request.form.get("historia") or 0
+        fisica = request.form.get("fisica") or 0
+        quimica = request.form.get("quimica") or 0
+        biologia = request.form.get("biologia") or 0
+        ingles = request.form.get("ingles") or 0
+        geografia = request.form.get("geografia") or 0
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -91,10 +91,12 @@ def registro():
         conn.commit()
         conn.close()
 
-        # Guardar en el dataset CSV
-        df = pd.read_csv(DATASET_PATH) if os.path.exists(DATASET_PATH) else pd.DataFrame(columns=[
-            "Nombre", "Apellido", "Email", "Matematicas", "Historia", "Fisica", "Quimica", "Biologia", "Ingles", "Geografia"
-        ])
+        # 📌 **Guardar en el dataset CSV**
+        columnas = ["Nombre", "Apellido", "Email", "Matematicas", "Historia", "Fisica", "Quimica", "Biologia", "Ingles", "Geografia"]
+        if os.path.exists(DATASET_PATH):
+            df = pd.read_csv(DATASET_PATH)
+        else:
+            df = pd.DataFrame(columns=columnas)
 
         nueva_fila = pd.DataFrame({
             "Nombre": [nombre], "Apellido": [apellido], "Email": [email],
@@ -149,7 +151,7 @@ def encuesta():
 
     return render_template("encuesta.html", preguntas=preguntas, respuestas_previas=respuestas_previas)
 
-# 📌 Guardar respuestas
+# 📌 **Guardar respuestas**
 @app.route('/guardar_respuestas', methods=['POST'])
 def guardar_respuestas():
     if "usuario_id" not in session:
