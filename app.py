@@ -124,6 +124,28 @@ def dashboard():
     
     return render_template("dashboard.html", nombre=nombre, apellido=apellido)
 
+# 📌 Ruta de la encuesta
+@app.route('/encuesta', methods=['GET', 'POST'])
+def encuesta():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    respuestas_previas = dict(cursor.fetchall())
+
+    conn.close()
+
+    return render_template("encuesta.html", preguntas=preguntas, respuestas_previas=respuestas_previas)
+
+# 📌 Ruta para cerrar sesión
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login")) 
 # 📌 Ruta para cerrar sesión
 @app.route("/logout")
 def logout():
