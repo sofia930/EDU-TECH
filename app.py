@@ -90,6 +90,7 @@ def registro():
 
     return render_template("registro.html")
 
+
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
