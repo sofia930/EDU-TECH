@@ -223,7 +223,7 @@ def verificar_base_datos():
     )
     """)
     
-    c# Crear tabla de usuarios si no existe
+    # Crear tabla de usuarios si no existe
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
