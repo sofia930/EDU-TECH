@@ -9,12 +9,18 @@
 <body>
 
     <form method="POST" action="{{ url_for('encuesta') }}">
-        {% for pregunta in preguntas %}
-            <p>{{ pregunta.texto }}</p>
-            <label><input type="radio" name="pregunta{{ loop.index0 }}" value="+" required> Sí</label>
-            <label><input type="radio" name="pregunta{{ loop.index0 }}" value="-"> No</label>
-            <br><br>
-        {% endfor %}
+        {% for i, pregunta in enumerate(preguntas) %}
+        <p>{{ pregunta.texto }}</p>
+        <label>
+            <input type="radio" name="pregunta{{ i }}" value="+" 
+                {% if respuestas and respuestas['pregunta_' ~ (i+1)] == "+" %} checked {% endif %}> Sí
+        </label>
+        <label>
+            <input type="radio" name="pregunta{{ i }}" value="-"
+                {% if respuestas and respuestas['pregunta_' ~ (i+1)] == "-" %} checked {% endif %}> No
+        </label>
+        <br><br>
+    {% endfor %}
     
         <button type="submit">Guardar Respuestas</button>
     </form>
