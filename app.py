@@ -139,20 +139,59 @@ def encuesta():
     
     return render_template("encuesta.html", preguntas=preguntas)
 
-# 📌 Ruta de resultados
-@app.route('/resultado', methods=['GET'])
+@app.route('/resultado', methods=['POST'])
 def resultado():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("login"))  # Redirigir si el usuario no ha iniciado sesión
 
+    # Obtener respuestas de la encuesta
+    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
+
+    # Validar que todas las respuestas estén completas
+    if None in respuestas.values():
+        return render_template("encuesta.html", preguntas=preguntas, error="⚠️ Debes responder todas las preguntas.")
+
+    # Inicializar los estilos de aprendizaje
+    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
+
+    # Contar las respuestas por estilo
+    for i in range(len(preguntas)):  
+        respuesta = respuestas.get(f'pregunta{i}')
+        if respuesta == '+':
+            estilos[preguntas[i]['estilo']] += 1  
+
+    # Determinar el estilo predominante
+    estilo_predominante = max(estilos, key=estilos.get)
+
+    # **📌 Guardar respuestas en el dataset `datos.csv`**
+    df = pd.read_csv(DATASET_PATH)  # Cargar el CSV
+    index = df[(df['Nombre'].str.lower() == session["nombre"].lower()) & 
+               (df['Apellido'].str.lower() == session["apellido"].lower())].index  # Buscar el usuario
+
+    if not index.empty:
+        for i, pregunta in enumerate(preguntas):
+            df.at[index[0], f"Pregunta_{i+1}"] = request.form.get(f'pregunta{i}')  # Guardar la respuesta en la columna
+
+    df.to_csv(DATASET_PATH, index=False)  # Guardar cambios en el CSV
+
+    # **📌 Obtener rendimiento académico del usuario desde la BD**
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (session["usuario_id"],))
-    respuestas = cursor.fetchall()
+    cursor.execute("""
+        SELECT matematicas, historia, fisica, quimica, biologia, ingles, geografia
+        FROM usuarios WHERE id_usuario = ?""", (session["usuario_id"],))
+    
+    rendimiento = cursor.fetchone()
     conn.close()
 
-    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], respuestas=respuestas)
+    if rendimiento:
+        materias = ["Matemáticas", "Historia", "Física", "Química", "Biología", "Inglés", "Geografía"]
+        rendimiento_dict = {materias[i]: rendimiento[i] for i in range(len(materias))}
+    else:
+        rendimiento_dict = {}
 
+    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], 
+                           estilo=estilo_predominante, rendimiento=rendimiento_dict)
 # 📌 Ruta de cerrar sesión
 @app.route("/logout")
 def logout():
