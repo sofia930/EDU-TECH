@@ -7,13 +7,12 @@
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-</head>
 <body>
     <h2>Registro de Estudiante</h2>
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
-    <form method="POST" action="/">
+    <form method="POST" action="{{ url_for('registro') }}">
         <label for="nombre">Nombre:</label>
         <input type="text" id="nombre" name="nombre" required><br><br>
         
@@ -26,7 +25,7 @@
         <label for="contraseña">Contraseña:</label>
         <input type="password" id="contraseña" name="contraseña" required><br><br>
 
-        <button type="submit">Comenzar Encuesta</button>
+        <button type="submit">Registrarse</button>
     </form>
 </body>
 </html>
