@@ -9,6 +9,7 @@ app.secret_key = "supersecreto"
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
+DATASET_PATH = os.path.join(BASE_DIR, 'dataset.csv')  # Ruta del dataset
 
 # 📌 Preguntas de la encuesta
 preguntas = [
@@ -31,14 +32,7 @@ def verificar_base_datos():
         email TEXT UNIQUE NOT NULL,
         contraseña TEXT NOT NULL,
         nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        matematicas INTEGER,
-        historia INTEGER,
-        fisica INTEGER,
-        quimica INTEGER,
-        biologia INTEGER,
-        ingles INTEGER,
-        geografia INTEGER
+        apellido TEXT NOT NULL
     )
     """)
 
@@ -46,11 +40,6 @@ def verificar_base_datos():
     conn.close()
 
 verificar_base_datos()
-
-# 📌 Ruta principal (Muestra la bienvenida)
-@app.route('/')
-def home():
-    return render_template("bienvenida.html")  
 
 # 📌 Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
@@ -61,6 +50,16 @@ def registro():
         nombre = request.form.get("nombre").strip().title()
         apellido = request.form.get("apellido").strip().title()
 
+        # 📌 1️⃣ Verificar si el email ya está en el dataset
+        try:
+            df = pd.read_csv(DATASET_PATH, encoding="utf-8")
+            if email in df["email"].values:
+                return render_template("registro.html", error="⚠️ Este email ya está registrado en el dataset.")
+        except FileNotFoundError:
+            # Si el archivo no existe, lo creamos después
+            df = pd.DataFrame(columns=["email", "nombre", "apellido", "contraseña"])
+
+        # 📌 2️⃣ Conectar con SQLite y verificar si el usuario ya está registrado
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
@@ -68,17 +67,23 @@ def registro():
 
         if usuario_existente:
             conn.close()
-            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
+            return render_template("registro.html", error="⚠️ Este email ya está registrado en la base de datos.")
 
+        # 📌 3️⃣ Insertar el usuario en la base de datos
         cursor.execute("INSERT INTO usuarios (email, contraseña, nombre, apellido) VALUES (?, ?, ?, ?)", 
                        (email, contraseña, nombre, apellido))
         conn.commit()
         conn.close()
 
-        return redirect(url_for("login"))  # ✅ Redirige al login después del registro
+        # 📌 4️⃣ Agregar el usuario al dataset
+        nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
+                                      columns=["email", "nombre", "apellido", "contraseña"])
+        df = pd.concat([df, nuevo_registro], ignore_index=True)
+        df.to_csv(DATASET_PATH, index=False, encoding="utf-8")
+
+        return redirect(url_for("login"))  # ✅ Redirige al login
 
     return render_template("registro.html")
-
 
 # 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
@@ -114,90 +119,6 @@ def dashboard():
     apellido = session["apellido"]
     
     return render_template("dashboard.html", nombre=nombre, apellido=apellido)
-
-@app.route("/ver_progreso")
-def ver_progreso():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  # Redirige a login si el usuario no ha iniciado sesión
-
-    usuario_id = session["usuario_id"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas = cursor.fetchall()
-    
-    conn.close()
-
-    return render_template("progreso.html", respuestas=respuestas)
-
-# 📌 Ruta de la encuesta
-@app.route('/encuesta', methods=['GET', 'POST'])
-def encuesta():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    usuario_id = session["usuario_id"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_previas = dict(cursor.fetchall())
-
-    conn.close()
-
-    return render_template("encuesta.html", preguntas=preguntas, respuestas_previas=respuestas_previas)
-
-# 📌 Guardar respuestas parciales de la encuesta
-@app.route('/guardar_respuestas', methods=['POST'])
-def guardar_respuestas():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    usuario_id = session["usuario_id"]
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    for i, pregunta in enumerate(preguntas):
-        respuesta = request.form.get(f'pregunta{i}')
-        if respuesta:  
-            cursor.execute("""
-                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
-                VALUES (?, ?, ?)
-                ON CONFLICT(id_usuario, pregunta) 
-                DO UPDATE SET respuesta = excluded.respuesta
-            """, (usuario_id, pregunta["texto"], respuesta))
-
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for("dashboard"))  # ✅ Redirige al Dashboard después de guardar
-
-# 📌 Ruta de resultados de la encuesta
-@app.route('/resultado', methods=['POST'])
-def resultado():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  
-
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-
-    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
-    
-    if None in respuestas.values():
-        return render_template("encuesta.html", preguntas=preguntas, error="⚠️ Debes responder todas las preguntas.")
-
-    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
-
-    for i in range(len(preguntas)):  
-        respuesta = respuestas.get(f'pregunta{i}')
-        if respuesta == '+':
-            estilos[preguntas[i]['estilo']] += 1  
-
-    estilo_predominante = max(estilos, key=estilos.get)
-
-    return render_template('resultado.html', nombre=nombre, apellido=apellido, estilo=estilo_predominante)
 
 # 📌 Ruta para cerrar sesión
 @app.route("/logout")
