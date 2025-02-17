@@ -449,7 +449,7 @@ def ver_progreso():
 
     return render_template("progreso.html", respuestas=respuestas)
 
-  @app.route('/guardar_respuestas', methods=['POST'])
+@app.route('/guardar_respuestas', methods=['POST'])
 def guardar_respuestas():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
