@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bienvenido a EDU-TECH</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <div id="welcome-container">
+        <h1>Bienvenido a EDU-TECH</h1>
+        <p>Esta página te ayudará a mejorar tus métodos de estudio mediante aplicaciones educativas.</p>
+        <p>¿SABIAS QUE CADA PERSONA TIENE UN ESTILO DE APRENDIZAJE?</p>
+        <p>Descubre cuál es tu estilo de aprendizaje con nuestro cuestionario basado en el modelo de Honey-Alonso.</p>
+        <p>Según tus respuestas, te recomendaremos herramientas y apps adaptadas a tu forma de aprender.</p>
+
+        <div class="botones">
+            <a href="{{ url_for('registro') }}"><button>Registrarse</button></a>
+            <a href="{{ url_for('login') }}"><button>Iniciar Sesión</button></a>
+        </div>
+    </div>
+
+</body>
+</html>
