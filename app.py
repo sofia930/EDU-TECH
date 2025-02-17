@@ -50,13 +50,11 @@ def verificar_base_datos():
 
 verificar_base_datos()
 
-# 📌 Ruta principal
 @app.route('/')
 def home():
     if "usuario_id" in session:
-        return redirect(url_for("encuesta"))
-    return redirect(url_for("registro"))
-
+        return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
+    return redirect(url_for("registro"))  # Si no está logueado, lo lleva a registro
 # 📌 Ruta de registro
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
