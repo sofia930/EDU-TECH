@@ -4,56 +4,75 @@ import os
 import pandas as pd
 
 app = Flask(__name__)
-app.secret_key = "supersecreto"
+app.secret_key = "supersecreto"  # Clave secreta para sesiones
 
-# 📌 Rutas de archivos
+# Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'database.db')
-DATASET_PATH = os.path.join(BASE_DIR, 'dataset.csv')  # Ruta del dataset
+DB_PATH = os.path.join(BASE_DIR, 'database.db')  # Ruta de la base de datos
+DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')  # Ruta del dataset CSV
+
+# 📌 Preguntas de la encuesta
+preguntas = [
+    {"texto": "Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
+    {"texto": "Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
+    {"texto": "Muchas veces actúo sin mirar las consecuencias.", "estilo": "Activo"},
+    {"texto": "Normalmente trato de resolver los problemas metódicamente y paso a paso.", "estilo": "Teórico"},
+    {"texto": "Creo que los formalismos coartan y limitan la actuación libre de las personas.", "estilo": "Activo"},
+]
 
 # 📌 Verificar si la base de datos existe y crearla si no
+
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-
-    # Crear tabla de usuarios si no existe
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
         contraseña TEXT NOT NULL,
         nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL
+        apellido TEXT NOT NULL,
+        matematicas INTEGER,
+        historia INTEGER,
+        fisica INTEGER,
+        quimica INTEGER,
+        biologia INTEGER,
+        ingles INTEGER,
+        geografia INTEGER
     )
     """)
-
     conn.commit()
     conn.close()
 
+# 📌 Inicializar la base de datos
 verificar_base_datos()
 
+# 📌 Función para guardar estudiantes en el CSV
+def guardar_en_csv(nombre, apellido, email):
+    datos_nuevo = pd.DataFrame([[nombre, apellido, email]], columns=["Nombre", "Apellido", "Email"])
+    if os.path.exists(DATASET_PATH):
+        datos_existentes = pd.read_csv(DATASET_PATH)
+        datos_actualizados = pd.concat([datos_existentes, datos_nuevo], ignore_index=True)
+    else:
+        datos_actualizados = datos_nuevo
+    datos_actualizados.to_csv(DATASET_PATH, index=False)
+
+# 📌 Ruta principal (Redirige al registro si no ha iniciado sesión)
 @app.route('/')
 def home():
-    return render_template("bienvenida.html")  
+    if "usuario_id" in session:
+        return redirect(url_for("encuesta"))
+    return redirect(url_for("registro"))
 
 # 📌 Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
+        nombre = request.form.get("nombre").strip()
+        apellido = request.form.get("apellido").strip()
         email = request.form.get("email").strip().lower()
         contraseña = request.form.get("contraseña").strip()
-        nombre = request.form.get("nombre").strip().title()
-        apellido = request.form.get("apellido").strip().title()
-
-        # 📌 1️⃣ Verificar si el email ya está en el dataset
-        if os.path.exists(DATASET_PATH):
-            df = pd.read_csv(DATASET_PATH, encoding="utf-8")
-            if email in df["email"].values:
-                return render_template("registro.html", error="⚠️ Este email ya está registrado en el dataset.")
-        else:
-            df = pd.DataFrame(columns=["email", "nombre", "apellido", "contraseña"])
-
-        # 📌 2️⃣ Conectar con SQLite y verificar si el usuario ya está registrado
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
@@ -61,29 +80,16 @@ def registro():
 
         if usuario_existente:
             conn.close()
-            return render_template("registro.html", error="⚠️ Este email ya está registrado en la base de datos.")
-
-        # 📌 3️⃣ Insertar el usuario en la base de datos
+            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
+        
         cursor.execute("INSERT INTO usuarios (email, contraseña, nombre, apellido) VALUES (?, ?, ?, ?)", 
                        (email, contraseña, nombre, apellido))
         conn.commit()
         conn.close()
-
-        # 📌 4️⃣ Agregar el usuario al dataset sin sobrescribir el archivo
-        nuevo_registro = pd.DataFrame([[email, nombre, apellido, contraseña]], 
-                                      columns=["email", "nombre", "apellido", "contraseña"])
-
-        # 📌 Verificar si dataset.csv ya existe y agregar los datos sin sobrescribir
-        if os.path.exists(DATASET_PATH):
-            df = pd.read_csv(DATASET_PATH, encoding="utf-8")
-            df = pd.concat([df, nuevo_registro], ignore_index=True)
-        else:
-            df = nuevo_registro  # Si no existe, crea el dataframe desde cero
-
-        df.to_csv(DATASET_PATH, index=False, encoding="utf-8")
-
-        return redirect(url_for("login"))  # ✅ Redirige al login
-
+        
+        guardar_en_csv(nombre, apellido, email)  # Guardar en CSV
+        return redirect(url_for("login"))
+    
     return render_template("registro.html")
 
 # 📌 Ruta de login
@@ -92,7 +98,7 @@ def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
         contraseña = request.form["contraseña"]
-
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = ? AND contraseña = ?", (email, contraseña))
@@ -103,40 +109,34 @@ def login():
             session["usuario_id"] = usuario[0]
             session["nombre"] = usuario[1]
             session["apellido"] = usuario[2]
-            session["email"] = email  
-            return redirect(url_for("dashboard"))  # ✅ Redirige al Dashboard
+            session["email"] = email
+            return redirect(url_for("encuesta"))
         else:
             return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
-
-    return render_template("login.html")
-
-# 📌 Ruta del Dashboard
-@app.route('/dashboard')
-def dashboard():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    nombre = session["nombre"]
-    apellido = session["apellido"]
     
-    return render_template("dashboard.html", nombre=nombre, apellido=apellido)
+    return render_template("login.html")
 
 # 📌 Ruta de la encuesta
 @app.route('/encuesta', methods=['GET', 'POST'])
 def encuesta():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
+    if request.method == "POST":
+        return redirect(url_for("resultado"))
+    return render_template("encuesta.html", preguntas=preguntas)
 
-    usuario_id = session["usuario_id"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_previas = dict(cursor.fetchall())
-
-    conn.close()
-
-    return render_template("encuesta.html", preguntas=preguntas, respuestas_previas=respuestas_previas)
+# 📌 Ruta de resultados de la encuesta
+@app.route('/resultado', methods=['POST'])
+def resultado():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
+    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
+    for i in range(len(preguntas)):
+        if respuestas.get(f'pregunta{i}') == '+':
+            estilos[preguntas[i]['estilo']] += 1  
+    estilo_predominante = max(estilos, key=estilos.get)
+    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], estilo=estilo_predominante)
 
 # 📌 Ruta para cerrar sesión
 @app.route("/logout")
