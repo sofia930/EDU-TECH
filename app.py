@@ -161,21 +161,18 @@ def encuesta():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        df = pd.read_csv(DATASET_PATH)
+        respuestas_usuario = {}
 
-        # Buscar al usuario en el dataset
-        index = df[(df['Nombre'].str.lower() == session["nombre"].lower()) & 
-                   (df['Apellido'].str.lower() == session["apellido"].lower())].index
+        for i, pregunta in enumerate(preguntas):
+            respuestas_usuario[f'pregunta_{i+1}'] = request.form.get(f'pregunta{i}')
 
-        if not index.empty:
-            for i, pregunta in enumerate(preguntas):
-                df.at[index[0], f"Pregunta_{i+1}"] = request.form.get(f'pregunta{i}')
+        # Guardar respuestas en la sesión (solo en memoria, NO en el CSV)
+        session["respuestas"] = respuestas_usuario
 
-        df.to_csv(DATASET_PATH, index=False)
-
-        return redirect(url_for("resultado"))
+        return redirect(url_for("resultado"))  
 
     return render_template("encuesta.html", preguntas=preguntas)
+
 
 @app.route('/resultado', methods=['POST'])
 def resultado():
