@@ -201,17 +201,7 @@ def resultado():
     # Determinar el estilo predominante
     estilo_predominante = max(estilos, key=estilos.get)
 
-    # **📌 Guardar respuestas en el dataset `datos.csv`**
-    df = pd.read_csv(DATASET_PATH)  # Cargar el CSV
-    index = df[(df['Nombre'].str.lower() == session["nombre"].lower()) & 
-               (df['Apellido'].str.lower() == session["apellido"].lower())].index  # Buscar el usuario
-
-    if not index.empty:
-        for i, pregunta in enumerate(preguntas):
-            df.at[index[0], f"Pregunta_{i+1}"] = request.form.get(f'pregunta{i}')  # Guardar la respuesta en la columna
-
-    df.to_csv(DATASET_PATH, index=False)  # Guardar cambios en el CSV
-
+   
     # **📌 Obtener rendimiento académico del usuario desde la BD**
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
