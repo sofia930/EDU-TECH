@@ -384,12 +384,14 @@ def guardar_respuestas():
     return redirect(url_for("ver_progreso"))  # ✅ Después de guardar, ir al progreso
 
 # 📌 Ruta para cerrar sesión
-@app.route("/logout")
+
+class CerrarSesion:
+@staticmethod
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route('/ver_respuestas')
+@staticmethod
 def ver_respuestas():
     return render_template("ver_respuestas.html")
 
