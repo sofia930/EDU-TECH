@@ -9,46 +9,91 @@ app.secret_key = "supersecreto"
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
-DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
+DATASET_PATH = os.path.join(BASE_DIR, 'datos.csv')
 
-def verificar_base_datos():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Tabla de usuarios
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        contraseña TEXT NOT NULL,
-        nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        matematicas INTEGER,
-        historia INTEGER,
-        fisica INTEGER,
-        quimica INTEGER,
-        biologia INTEGER,
-        ingles INTEGER,
-        geografia INTEGER
-    )
-    """)
+# 📌 Clase para gestionar la base de datos
+class DatabaseManager:
+    def __init__(self):
+        self.db_path = DB_PATH
+        self.verificar_base_datos()
 
-    # Tabla de respuestas (Guarda respuestas por usuario)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS respuestas (
-        id_usuario INTEGER PRIMARY KEY,
-        pregunta_1 TEXT,
-        pregunta_2 TEXT,
-        pregunta_3 TEXT,          
-        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-    )
-    """)
+    def conectar(self):
+        return sqlite3.connect(self.db_path)
 
-    conn.commit()
-    conn.close()
+    def verificar_base_datos(self):
+        conn = self.conectar()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            contraseña TEXT NOT NULL,
+            nombre TEXT NOT NULL,
+            apellido TEXT NOT NULL,
+            matematicas INTEGER,
+            historia INTEGER,
+            fisica INTEGER,
+            quimica INTEGER,
+            biologia INTEGER,
+            ingles INTEGER,
+            geografia INTEGER
+        )
+        """)
 
-# 📌 Preguntas de la encuesta
-preguntas =  [
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS respuestas (
+            id_usuario INTEGER,
+            pregunta TEXT NOT NULL,
+            respuesta TEXT,
+            PRIMARY KEY (id_usuario, pregunta),
+            FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+        )
+        """)
+
+        conn.commit()
+        conn.close()
+
+db_manager = DatabaseManager()  # Instancia de la base de datos
+
+# 📌 Clase Usuario
+class Usuario:
+    def __init__(self, email, contraseña, nombre, apellido, calificaciones):
+        self.email = email.strip().lower()
+        self.contraseña = contraseña.strip()
+        self.nombre = nombre.strip().title()
+        self.apellido = apellido.strip().title()
+        self.calificaciones = calificaciones
+
+    def registrar(self):
+        conn = db_manager.conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM usuarios WHERE email = ?", (self.email,))
+        if cursor.fetchone():
+            conn.close()
+            return False  # Usuario ya existe
+
+        cursor.execute("""
+        INSERT INTO usuarios (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (self.email, self.contraseña, self.nombre, self.apellido, *self.calificaciones))
+
+        conn.commit()
+        conn.close()
+        return True
+
+    @staticmethod
+    def autenticar(email, contraseña):
+        conn = db_manager.conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = ? AND contraseña = ?", (email.strip().lower(), contraseña))
+        usuario = cursor.fetchone()
+        conn.close()
+        return usuario
+
+# 📌 Clase para manejar la encuesta
+class Encuesta:
+    preguntas = [
             {"texto": "1. Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
             {"texto": "2. Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
             {"texto": "3. Muchas veces actúo sin mirar las consecuencias.", "estilo": "Activo"},
@@ -131,269 +176,126 @@ preguntas =  [
             {"texto": "80. Esquivo los temas subjetivos, ambiguos y poco claros.", "estilo": "Pragmático"},
             ]
 
-# 📌 Verificar si la base de datos existe y crearla si no
-def verificar_base_datos():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # Crear tabla de usuarios si no existe
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        contraseña TEXT NOT NULL,
-        nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        matematicas INTEGER,
-        historia INTEGER,
-        fisica INTEGER,
-        quimica INTEGER,
-        biologia INTEGER,
-        ingles INTEGER,
-        geografia INTEGER
-    )
-    """)
-
-    # Crear tabla de respuestas, permitiendo actualizar respuestas
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS respuestas (
-        id_usuario INTEGER,
-        pregunta TEXT NOT NULL,
-        respuesta TEXT,
-        PRIMARY KEY (id_usuario, pregunta),
-        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-verificar_base_datos()
-
-# 📌 Ruta principal (Muestra la bienvenida)
-@app.route('/')
-def home():
-    return render_template("bienvenida.html")  
-
-def home1():
-    if "usuario_id" in session:
-        return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
-    return redirect(url_for("registro"))
- 
-# 📌 Ruta de registro de estudiante
-@app.route("/registro", methods=["GET", "POST"])
-def registro():
-    if request.method == "POST":
-        email = request.form.get("email").strip().lower()
-        contraseña = request.form.get("contraseña").strip()
-        nombre = request.form.get("nombre").strip().title()
-        apellido = request.form.get("apellido").strip().title()
-
-        # Obtener las calificaciones
-        matematicas = request.form.get("matematicas")
-        historia = request.form.get("historia")
-        fisica = request.form.get("fisica")
-        quimica = request.form.get("quimica")
-        biologia = request.form.get("biologia")
-        ingles = request.form.get("ingles")
-        geografia = request.form.get("geografia")
-
-        conn = sqlite3.connect(DB_PATH)
+    @staticmethod
+    def guardar_respuestas(usuario_id, respuestas):
+        conn = db_manager.conectar()
         cursor = conn.cursor()
-
-        # Verificar si el usuario ya existe
-        cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
-        usuario_existente = cursor.fetchone()
-
-        if usuario_existente:
-            conn.close()
-            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
-
-        # Insertar el nuevo usuario en SQLite
-        cursor.execute("""
-            INSERT INTO usuarios (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (email, contraseña, nombre, apellido, matematicas, historia, fisica, quimica, biologia, ingles, geografia))
+        for i, pregunta in enumerate(Encuesta.preguntas):
+            respuesta = respuestas.get(f'pregunta{i}')
+            if respuesta:
+                cursor.execute("""
+                    INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(id_usuario, pregunta) 
+                    DO UPDATE SET respuesta = excluded.respuesta
+                """, (usuario_id, pregunta["texto"], respuesta))
 
         conn.commit()
         conn.close()
 
-        # **Guardar en el dataset CSV**
-        df = pd.read_csv(DATASET_PATH)
+# 📌 Clase para manejar sesión
+class SessionService:
+    @staticmethod
+    def logout():
+        session.clear()
+        return redirect(url_for("login"))
 
-        # Crear una nueva fila con los datos
-        nueva_fila = pd.DataFrame({
-            "Nombre": [nombre],
-            "Apellido": [apellido],
-            "Email": [email],
-            "Matematicas": [matematicas],
-            "Historia": [historia],
-            "Fisica": [fisica],
-            "Quimica": [quimica],
-            "Biologia": [biologia],
-            "Ingles": [ingles],
-            "Geografia": [geografia]
-        })
+    @staticmethod
+    def ver_respuestas():
+        return render_template("ver_respuestas.html")
 
-        # Agregar la fila al dataset
-        df = pd.concat([df, nueva_fila], ignore_index=True)
-        df.to_csv(DATASET_PATH, index=False)
+# 📌 Ruta de Registro
+@app.route("/registro", methods=["GET", "POST"])
+def registro():
+    if request.method == "POST":
+        datos = {
+            "email": request.form.get("email"),
+            "contraseña": request.form.get("contraseña"),
+            "nombre": request.form.get("nombre"),
+            "apellido": request.form.get("apellido"),
+            "calificaciones": [
+                request.form.get("matematicas") or 0,
+                request.form.get("historia") or 0,
+                request.form.get("fisica") or 0,
+                request.form.get("quimica") or 0,
+                request.form.get("biologia") or 0,
+                request.form.get("ingles") or 0,
+                request.form.get("geografia") or 0
+            ]
+        }
 
-        return redirect(url_for("login"))  # ✅ Redirige al login después del registro
+        usuario = Usuario(**datos)
+        if not usuario.registrar():
+            return render_template("registro.html", error="⚠️ Este email ya está registrado.")
+
+        return redirect(url_for("login"))
 
     return render_template("registro.html")
 
-# 📌 Ruta de login
+# 📌 Ruta de Login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
+        email = request.form["email"]
         contraseña = request.form["contraseña"]
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = ? AND contraseña = ?", (email, contraseña))
-        usuario = cursor.fetchone()
-        conn.close()
+        usuario = Usuario.autenticar(email, contraseña)
 
         if usuario:
-            session["usuario_id"] = usuario[0]
-            session["nombre"] = usuario[1]
-            session["apellido"] = usuario[2]
-            session["email"] = email  
-            return redirect(url_for("dashboard"))  
-        else:
-            return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
+            session["usuario_id"], session["nombre"], session["apellido"] = usuario
+            return redirect(url_for("encuesta"))
+
+        return render_template("login.html", error="⚠️ Email o contraseña incorrectos")
 
     return render_template("login.html")
 
-# 📌 Ruta del Dashboard
-@app.route('/dashboard')
-def dashboard():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  # 🔹 Si no hay sesión, redirige a login
-
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-
-    return render_template("dashboard.html", nombre=nombre, apellido=apellido)
-
+# 📌 Ruta de Encuesta
 @app.route('/encuesta', methods=['GET', 'POST'])
 def encuesta():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
 
     usuario_id = session["usuario_id"]
-    conn = sqlite3.connect(DB_PATH)
+    conn = db_manager.conectar()
     cursor = conn.cursor()
-
-    # Obtener respuestas previas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_guardadas = cursor.fetchone()
     respuestas_previas = dict(cursor.fetchall())
     conn.close()
 
-    respuestas_dict = {}
-    if respuestas_guardadas:
-        for i, respuesta in enumerate(respuestas_guardadas):
-            respuestas_dict[f'pregunta_{i+1}'] = respuesta  # Convertir a diccionario
+    return render_template("encuesta.html", preguntas=Encuesta.preguntas, respuestas_previas=respuestas_previas)
 
-    return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_dict, respuestas_previas=respuestas_previas)
-
-# 📌 Ruta de resultados de la encuesta
-@app.route('/resultado', methods=['POST'])
-def resultado():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  
-
-    usuario_id = session["usuario_id"]
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-
-    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
-
-    estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
-
-    for i, pregunta in enumerate(preguntas):
-        respuesta = respuestas.get(f'pregunta_{i+1}')
-        if respuesta == '+':
-            estilos[pregunta["estilo"]] += 1  
-
-    # Determinar el estilo predominante
-    estilo_predominante = max(estilos, key=estilos.get)
-
-    # Obtener rendimiento académico desde la base de datos
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT matematicas, historia, fisica, quimica, biologia, ingles, geografia
-        FROM usuarios WHERE id_usuario = ?
-    """, (session["usuario_id"],))
-    
-    rendimiento = cursor.fetchone()
-    conn.close()
-
-    if rendimiento:
-        materias = ["Matematicas", "Historia", "Fisica", "Quimica", "Biologia", "Ingles", "Geografia"]
-        rendimiento_dict = {materias[i]: rendimiento[i] for i in range(len(materias))}
-    else:
-        rendimiento_dict = {}
-
-    return render_template('resultado.html', nombre=session["nombre"], apellido=session["apellido"], 
-                           estilo=estilo_predominante, rendimiento=rendimiento_dict, respuestas=respuestas)
-
-@app.route("/ver_progreso")
-def ver_progreso():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  # Redirige a login si el usuario no ha iniciado sesión
-
-    usuario_id = session["usuario_id"]
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas = cursor.fetchall()
-    
-    conn.close()
-
-    return render_template("progreso.html", respuestas=respuestas)
-
+# 📌 Guardar Respuestas
 @app.route('/guardar_respuestas', methods=['POST'])
 def guardar_respuestas():
     if "usuario_id" not in session:
         return redirect(url_for("login"))
 
     usuario_id = session["usuario_id"]
-    conn = sqlite3.connect(DB_PATH)
+    Encuesta.guardar_respuestas(usuario_id, request.form)
+    return redirect(url_for("ver_respuestas"))
+
+# 📌 Ver Progreso
+@app.route("/ver_progreso")
+def ver_progreso():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+    conn = db_manager.conectar()
     cursor = conn.cursor()
-
-    for i, pregunta in enumerate(preguntas):
-        respuesta = request.form.get(f'pregunta{i}')
-        if respuesta:  # Solo guarda respuestas marcadas
-            cursor.execute("""
-                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
-                VALUES (?, ?, ?)
-                ON CONFLICT(id_usuario, pregunta) 
-                DO UPDATE SET respuesta = excluded.respuesta
-            """, (usuario_id, pregunta["texto"], respuesta))
-
-    conn.commit()
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    respuestas = cursor.fetchall()
     conn.close()
 
-    return redirect(url_for("ver_progreso"))  # ✅ Después de guardar, ir al progreso
+    return render_template("progreso.html", respuestas=respuestas)
 
-# 📌 Ruta para cerrar sesión
+# 📌 Ruta de Logout
+@app.route("/logout")
+def logout():
+    return SessionService.logout()
 
-class CerrarSesion:
-  @staticmethod
-  def logout():
-    session.clear()
-    return redirect(url_for("login"))
-
-  @staticmethod
-  def ver_respuestas():
-    return render_template("ver_respuestas.html")
+@app.route('/ver_respuestas')
+def ver_respuestas():
+    return SessionService.ver_respuestas()
 
 if __name__ == '__main__':
     app.run(debug=True)
