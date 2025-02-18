@@ -11,7 +11,7 @@
             <li><strong>{{ pregunta }}</strong>: {{ "Sí" if respuesta == "+" else "No" }}</li>
         {% endfor %}
     </ul>
-    
-    <a href="{{ url_for('dashboard') }}">Volver al Dashboard</a>
+
+    <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
 </body>
 </html>
