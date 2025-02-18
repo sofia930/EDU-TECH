@@ -11,43 +11,7 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
 
-def verificar_base_datos():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Tabla de usuarios
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        contraseña TEXT NOT NULL,
-        nombre TEXT NOT NULL,
-        apellido TEXT NOT NULL,
-        matematicas INTEGER,
-        historia INTEGER,
-        fisica INTEGER,
-        quimica INTEGER,
-        biologia INTEGER,
-        ingles INTEGER,
-        geografia INTEGER
-    )
-    """)
-
-    # Tabla de respuestas (Guarda respuestas por usuario)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS respuestas (
-        id_usuario INTEGER PRIMARY KEY,
-        pregunta_1 TEXT,
-        pregunta_2 TEXT,
-        pregunta_3 TEXT,          
-        FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-# 📌 Preguntas de la encuesta
+# Preguntas de la encuesta
 preguntas =  [
             {"texto": "1. Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
             {"texto": "2. Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
@@ -131,7 +95,7 @@ preguntas =  [
             {"texto": "80. Esquivo los temas subjetivos, ambiguos y poco claros.", "estilo": "Pragmático"},
             ]
 
-# 📌 Verificar si la base de datos existe y crearla si no
+# Verificar si la base de datos existe y crearla si no
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -193,7 +157,7 @@ class CalculoDeRendimiento:
                 }
         return {"promedio": "N/A", "tipo_rendimiento": "Sin datos"}
 
-# 📌 Ruta principal (Muestra la bienvenida)
+# Ruta principal (Muestra la bienvenida)
 @app.route('/')
 def home():
     return render_template("bienvenida.html")  
@@ -203,7 +167,7 @@ def home1():
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
     return redirect(url_for("registro"))
  
-# 📌 Ruta de registro de estudiante
+# Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -241,7 +205,7 @@ def registro():
         conn.commit()
         conn.close()
 
-        # **Guardar en el dataset CSV**
+        # *Guardar en el dataset CSV*
         df = pd.read_csv(DATASET_PATH)
 
         # Crear una nueva fila con los datos
@@ -262,11 +226,11 @@ def registro():
         df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv(DATASET_PATH, index=False)
 
-        return redirect(url_for("login"))  # ✅ Redirige al login después del registro
+        return redirect(url_for("login"))  #Redirige al login después del registro
 
     return render_template("registro.html")
 
-# 📌 Ruta de login
+# Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -290,11 +254,11 @@ def login():
 
     return render_template("login.html")
 
-# 📌 Ruta del Dashboard
+# Ruta del Dashboard
 @app.route('/dashboard')
 def dashboard():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))  # 🔹 Si no hay sesión, redirige a login
+        return redirect(url_for("login"))  # Si no hay sesión, redirige a login
 
     nombre = session["nombre"]
     apellido = session["apellido"]
@@ -323,7 +287,7 @@ def encuesta():
 
     return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_dict, respuestas_previas=respuestas_previas)
 
-# 📌 Ruta de resultados de la encuesta
+# Ruta de resultados de la encuesta
 @app.route('/resultado', methods=['POST'])
 def resultado():
     if "usuario_id" not in session:
@@ -394,7 +358,7 @@ def guardar_respuestas():
 
     return redirect(url_for("ver_progreso"))  # ✅ Después de guardar, ir al progreso
 
-# 📌 Ruta para cerrar sesión
+# Ruta para cerrar sesión
 @app.route("/logout")
 def logout():
     session.clear()
@@ -404,5 +368,5 @@ def logout():
 def ver_respuestas():
     return render_template("ver_respuestas.html")
 
-if __name__ == '__main__':
+if __name__ == '_main_':
     app.run(debug=True)
