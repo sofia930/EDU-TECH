@@ -205,7 +205,7 @@ def registro():
         conn.commit()
         conn.close()
 
-        # *Guardar en el dataset CSV*
+        # **Guardar en el dataset CSV**
         df = pd.read_csv(DATASET_PATH)
 
         # Crear una nueva fila con los datos
@@ -368,5 +368,5 @@ def logout():
 def ver_respuestas():
     return render_template("ver_respuestas.html")
 
-if __name__ == '_main_':
+if __name__ == '__main__':
     app.run(debug=True)
