@@ -386,13 +386,13 @@ def guardar_respuestas():
 # 📌 Ruta para cerrar sesión
 
 class CerrarSesion:
-@staticmethod
-def logout():
+  @staticmethod
+  def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@staticmethod
-def ver_respuestas():
+  @staticmethod
+  def ver_respuestas():
     return render_template("ver_respuestas.html")
 
 if __name__ == '__main__':
