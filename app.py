@@ -6,7 +6,7 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "supersecreto"
 
-# Rutas de archivos
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
@@ -15,7 +15,7 @@ def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Tabla de usuarios
+    
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,

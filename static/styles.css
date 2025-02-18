@@ -1,14 +1,14 @@
 /* Fondo para la página de bienvenida */
 body {
-    background-image: url('/static/fondo.jpg'); /* Asegurar la ruta correcta */
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    background-image: url('/static/fondo.jpg'); /* Asegurar la ruta correcta*/
+    background-size: cover; /*Hace que la imagen de fondo cubra toda la pantalla sin distorsionarse.*/
+    background-position: center; /*Centra la imagen de fondo*/
+    background-repeat: no-repeat;/*Evita que la imagen de fondo se repita.*/
     min-height: 100vh; /* Asegura que el fondo cubra toda la pantalla */
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    color: #333;
+    margin: 0;/* Elimina cualquier margen y relleno predeterminado.*/
+    padding: 0;/*Elimina cualquier margen y relleno predeterminado.*/
+    font-family: Arial, sans-serif;/*Define la fuente de la página.*/
+    color: #333;/*Establece el color del texto en un tono oscuro.*/
     display: flex;
     flex-direction: column;
     align-items: center;
