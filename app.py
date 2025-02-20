@@ -314,41 +314,39 @@ def encuesta(pagina):
     fin = inicio + 20
     preguntas_pagina = preguntas[inicio:fin]
 
-    # Obtener respuestas guardadas del usuario
+    # Conectar a la base de datos
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # Obtener respuestas guardadas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_previas = dict(cursor.fetchall())  # Convertir la consulta en un diccionario
+    respuestas_previas = dict(cursor.fetchall())  
     conn.close()
 
     if request.method == "POST":
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
         for i, pregunta in enumerate(preguntas_pagina):
             respuesta = request.form.get(f'pregunta{inicio + i + 1}')
-            session[f'pregunta{inicio + i + 1}'] = respuesta  # Guardar en sesión
-
-        # Si está en la última página, guardar en la base de datos
-        if pagina == 4:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-
-            for i in range(80):
-                pregunta_texto = preguntas[i]["texto"]
-                respuesta = session.get(f'pregunta{i+1}', "No respondida")
+            if respuesta:  # Solo guarda si hay respuesta
                 cursor.execute("""
                     INSERT INTO respuestas (id_usuario, pregunta, respuesta)
                     VALUES (?, ?, ?)
                     ON CONFLICT(id_usuario, pregunta) 
                     DO UPDATE SET respuesta = excluded.respuesta
-                """, (usuario_id, pregunta_texto, respuesta))
+                """, (usuario_id, pregunta["texto"], respuesta))
 
-            conn.commit()
-            conn.close()
+        conn.commit()
+        conn.close()
+
+        # Ir a la siguiente página o mostrar resultados si es la última
+        if pagina == 4:
             return redirect(url_for("resultado"))
-
-        # Si no es la última página, ir a la siguiente
         return redirect(url_for("encuesta", pagina=pagina + 1))
 
-    return render_template("encuesta.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
+    return render_template(f"encuesta{pagina}.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
+
 
 
 
