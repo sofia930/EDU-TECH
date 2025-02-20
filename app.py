@@ -33,7 +33,7 @@ def verificar_base_datos():
     )
     """)
 
-    # Tabla de respuestas (Guarda respuestas por usuario)
+    
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS respuestas (
         id_usuario INTEGER PRIMARY KEY,
@@ -47,7 +47,7 @@ def verificar_base_datos():
     conn.commit()
     conn.close()
 
-# 📌 Preguntas de la encuesta
+
 preguntas =  [
             {"texto": "1. Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
             {"texto": "2. Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
@@ -131,7 +131,7 @@ preguntas =  [
             {"texto": "80. Esquivo los temas subjetivos, ambiguos y poco claros.", "estilo": "Pragmático"},
             ]
 
-# 📌 Verificar si la base de datos existe y crearla si no
+# Verificar si la base de datos existe y crearla si no
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -193,7 +193,7 @@ class CalculoDeRendimiento:
                 }
         return {"promedio": "N/A", "tipo_rendimiento": "Sin datos"}
 
-# 📌 Ruta principal (Muestra la bienvenida)
+# Ruta principal (Muestra la bienvenida)
 @app.route('/')
 def home():
     return render_template("bienvenida.html")  
@@ -203,7 +203,7 @@ def home1():
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
     return redirect(url_for("registro"))
  
-# 📌 Ruta de registro de estudiante
+#  Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -230,7 +230,7 @@ def registro():
 
         if usuario_existente:
             conn.close()
-            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
+            return render_template("registro.html", error=" Este email ya está registrado. Intenta iniciar sesión.")
 
         # Insertar el nuevo usuario en SQLite
         cursor.execute("""
@@ -262,11 +262,11 @@ def registro():
         df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv(DATASET_PATH, index=False)
 
-        return redirect(url_for("login"))  # ✅ Redirige al login después del registro
+        return redirect(url_for("login"))  # Redirige al login después del registro
 
     return render_template("registro.html")
 
-# 📌 Ruta de login
+#  Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -290,7 +290,7 @@ def login():
 
     return render_template("login.html")
 
-# 📌 Ruta del Dashboard
+#  Ruta del Dashboard
 @app.route('/dashboard')
 def dashboard():
     if "usuario_id" not in session:
