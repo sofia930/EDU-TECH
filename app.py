@@ -6,7 +6,7 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "supersecreto"
 
-
+# Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
@@ -15,7 +15,7 @@ def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    
+    # Tabla de usuarios
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +33,7 @@ def verificar_base_datos():
     )
     """)
 
-    
+    # Tabla de respuestas (Guarda respuestas por usuario)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS respuestas (
         id_usuario INTEGER PRIMARY KEY,
@@ -47,7 +47,7 @@ def verificar_base_datos():
     conn.commit()
     conn.close()
 
-
+# 📌 Preguntas de la encuesta
 preguntas =  [
             {"texto": "1. Tengo fama de decir lo que pienso claramente y sin rodeos.", "estilo": "Pragmático"},
             {"texto": "2. Estoy seguro/a de lo que es bueno y malo, lo que está bien y lo que está mal.", "estilo": "Teórico"},
@@ -131,7 +131,7 @@ preguntas =  [
             {"texto": "80. Esquivo los temas subjetivos, ambiguos y poco claros.", "estilo": "Pragmático"},
             ]
 
-# Verificar si la base de datos existe y crearla si no
+# 📌 Verificar si la base de datos existe y crearla si no
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -193,7 +193,7 @@ class CalculoDeRendimiento:
                 }
         return {"promedio": "N/A", "tipo_rendimiento": "Sin datos"}
 
-# Ruta principal (Muestra la bienvenida)
+# 📌 Ruta principal (Muestra la bienvenida)
 @app.route('/')
 def home():
     return render_template("bienvenida.html")  
@@ -203,7 +203,7 @@ def home1():
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard
     return redirect(url_for("registro"))
  
-#  Ruta de registro de estudiante
+# 📌 Ruta de registro de estudiante
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
@@ -230,7 +230,7 @@ def registro():
 
         if usuario_existente:
             conn.close()
-            return render_template("registro.html", error=" Este email ya está registrado. Intenta iniciar sesión.")
+            return render_template("registro.html", error="⚠️ Este email ya está registrado. Intenta iniciar sesión.")
 
         # Insertar el nuevo usuario en SQLite
         cursor.execute("""
@@ -262,11 +262,11 @@ def registro():
         df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv(DATASET_PATH, index=False)
 
-        return redirect(url_for("login"))  # Redirige al login después del registro
+        return redirect(url_for("login"))  # ✅ Redirige al login después del registro
 
     return render_template("registro.html")
 
-#  Ruta de login
+# 📌 Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -290,7 +290,7 @@ def login():
 
     return render_template("login.html")
 
-#  Ruta del Dashboard
+# 📌 Ruta del Dashboard
 @app.route('/dashboard')
 def dashboard():
     if "usuario_id" not in session:
@@ -301,56 +301,129 @@ def dashboard():
 
     return render_template("dashboard.html", nombre=nombre, apellido=apellido)
 
-@app.route('/encuesta', methods=['GET', 'POST'])
-def encuesta():
+# 📌 Ruta dinámica para las 4 páginas de la encuesta
+@app.route('/encuesta/<int:pagina>', methods=['GET', 'POST'])
+def encuesta(pagina):
     if "usuario_id" not in session:
         return redirect(url_for("login"))
 
     usuario_id = session["usuario_id"]
+
+    # Definir los límites de las preguntas en cada página
+    inicio = (pagina - 1) * 20
+    fin = inicio + 20
+    preguntas_pagina = preguntas[inicio:fin]
+
+    # Obtener respuestas guardadas del usuario
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-
-    # Obtener respuestas previas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas_guardadas = cursor.fetchone()
-    respuestas_previas = dict(cursor.fetchall())
+    respuestas_previas = dict(cursor.fetchall())  # Convertir la consulta en un diccionario
     conn.close()
 
-    respuestas_dict = {}
-    if respuestas_guardadas:
-        for i, respuesta in enumerate(respuestas_guardadas):
-            respuestas_dict[f'pregunta_{i+1}'] = respuesta  # Convertir a diccionario
+    if request.method == "POST":
+        for i, pregunta in enumerate(preguntas_pagina):
+            respuesta = request.form.get(f'pregunta{inicio + i + 1}')
+            session[f'pregunta{inicio + i + 1}'] = respuesta  # Guardar en sesión
 
-    return render_template("encuesta.html", preguntas=preguntas, respuestas=respuestas_dict, respuestas_previas=respuestas_previas)
+        # Si está en la última página, guardar en la base de datos
+        if pagina == 4:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+
+            for i in range(80):
+                pregunta_texto = preguntas[i]["texto"]
+                respuesta = session.get(f'pregunta{i+1}', "No respondida")
+                cursor.execute("""
+                    INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(id_usuario, pregunta) 
+                    DO UPDATE SET respuesta = excluded.respuesta
+                """, (usuario_id, pregunta_texto, respuesta))
+
+            conn.commit()
+            conn.close()
+            return redirect(url_for("resultado"))
+
+        # Si no es la última página, ir a la siguiente
+        return redirect(url_for("encuesta", pagina=pagina + 1))
+
+    return render_template("encuesta.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
+
+
 
 # 📌 Ruta de resultados de la encuesta
-@app.route('/resultado', methods=['POST'])
+@app.route('/resultado', methods=['GET', 'POST'])
 def resultado():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))  
+        return redirect(url_for("login"))  # Redirigir al login si no hay sesión
 
     usuario_id = session["usuario_id"]
-    nombre = session["nombre"]
-    apellido = session["apellido"]
+    nombre = session.get("nombre", "Usuario")
+    apellido = session.get("apellido", "")
 
-    respuestas = {f'pregunta{i}': request.form.get(f'pregunta{i}') for i in range(len(preguntas))}
+    # Obtener respuestas almacenadas en la sesión
+    respuestas = {f'pregunta{i}': session.get(f'pregunta{i}') for i in range(1, 81)}
 
     estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
 
     for i, pregunta in enumerate(preguntas):
-        respuesta = respuestas.get(f'pregunta_{i+1}')
+        respuesta = respuestas.get(f'pregunta{i+1}')
         if respuesta == '+':
             estilos[pregunta["estilo"]] += 1  
 
+    # Determinar el estilo predominante
     estilo_predominante = max(estilos, key=estilos.get)
 
-    rendimiento = CalculoDeRendimiento.obtener_rendimiento(nombre, apellido)
-    tipo_rendimiento = rendimiento["tipo_rendimiento"]
-    promedio_rendimiento = rendimiento["promedio"]
+    # Obtener rendimiento académico desde la base de datos
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT matematicas, historia, fisica, quimica, biologia, ingles, geografia
+        FROM usuarios WHERE id_usuario = ?
+    """, (usuario_id,))
     
+    rendimiento = cursor.fetchone()
+    conn.close()
+
+    if rendimiento and all(isinstance(val, (int, float)) for val in rendimiento if val is not None):
+        materias = ["Matematicas", "Historia", "Fisica", "Quimica", "Biologia", "Ingles", "Geografia"]
+        rendimiento_dict = {materias[i]: rendimiento[i] for i in range(len(materias))}
+
+        notas = [nota for nota in rendimiento if nota is not None]  # Ignorar valores None
+        promedio_rendimiento = sum(notas) / len(notas) if notas else 0
+        tipo_rendimiento = calcular_categoria_rendimiento(promedio_rendimiento)
+    else:
+        rendimiento_dict = {}
+        promedio_rendimiento = "N/A"
+        tipo_rendimiento = "No se pudo calcular tu rendimiento académico."
+
     return render_template('resultado.html', nombre=nombre, apellido=apellido, 
-                           estilo=estilo_predominante, tipo_rendimiento=tipo_rendimiento,
-                           promedio_rendimiento=promedio_rendimiento, respuestas=respuestas)
+                           estilo=estilo_predominante, rendimiento=rendimiento_dict, 
+                           promedio_rendimiento=promedio_rendimiento, tipo_rendimiento=tipo_rendimiento)
+
+# 📌 Función para categorizar rendimiento académico
+def calcular_categoria_rendimiento(promedio):
+    if promedio >= 90:
+        return "Superior"
+    elif promedio >= 80:
+        return "Alto"
+    elif promedio >= 70:
+        return "Básico"
+    else:
+        return "Bajo"
+
+
+# 📌 Función para categorizar rendimiento académico
+def calcular_categoria_rendimiento(promedio):
+    if promedio >= 90:
+        return "Superior"
+    elif promedio >= 80:
+        return "Alto"
+    elif promedio >= 70:
+        return "Básico"
+    else:
+        return "Bajo"
 
 
 @app.route("/ver_progreso")

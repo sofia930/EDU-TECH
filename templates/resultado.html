@@ -13,14 +13,12 @@
         <h3>📌 Estilo de aprendizaje predominante: <strong>{{ estilo }}</strong></h3>
 
         <h3>📊 Rendimiento Académico</h3>
-        <p>Tu rendimiento general es: {{ promedio_rendimiento }} ({{ tipo_rendimiento }})</p>
+        {% if promedio_rendimiento != "N/A" %}
+            <p>Tu rendimiento general es: <strong>{{ promedio_rendimiento }}</strong> ({{ tipo_rendimiento }})</p>
+        {% else %}
+            <p>No se pudo calcular tu rendimiento académico.</p>
+        {% endif %}
 
         <div class="botones">
             <a href="{{ url_for('dashboard') }}"><button>Volver</button></a>
-            <a href="{{ url_for('encuesta') }}"><button>Volver a Realizar la Encuesta</button></a>
-        </div>
-    </div>
-
-</body>
-</html>
-
+            <a href="{{ url_for('encuesta', pagina=1) }}"
