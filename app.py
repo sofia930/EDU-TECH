@@ -301,7 +301,22 @@ def dashboard():
 
     return render_template("dashboard.html", nombre=nombre, apellido=apellido)
 
-# 📌 Ruta dinámica para las 4 páginas de la encuesta
+@app.route('/imagen1')
+def imagen1():
+    return render_template("imagen1.html")
+
+@app.route('/imagen2')
+def imagen2():
+    return render_template("imagen2.html")
+
+@app.route('/imagen3')
+def imagen3():
+    return render_template("imagen3.html")
+
+@app.route('/imagen4')
+def imagen4():
+    return render_template("imagen4.html")
+
 @app.route('/encuesta/<int:pagina>', methods=['GET', 'POST'])
 def encuesta(pagina):
     if "usuario_id" not in session:
@@ -309,16 +324,12 @@ def encuesta(pagina):
 
     usuario_id = session["usuario_id"]
 
-    # Definir los límites de las preguntas en cada página
     inicio = (pagina - 1) * 20
     fin = inicio + 20
     preguntas_pagina = preguntas[inicio:fin]
 
-    # Conectar a la base de datos
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-
-    # Obtener respuestas guardadas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
     respuestas_previas = dict(cursor.fetchall())  
     conn.close()
@@ -326,10 +337,9 @@ def encuesta(pagina):
     if request.method == "POST":
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-
         for i, pregunta in enumerate(preguntas_pagina):
             respuesta = request.form.get(f'pregunta{inicio + i + 1}')
-            if respuesta:  # Solo guarda si hay respuesta
+            if respuesta:
                 cursor.execute("""
                     INSERT INTO respuestas (id_usuario, pregunta, respuesta)
                     VALUES (?, ?, ?)
@@ -340,12 +350,17 @@ def encuesta(pagina):
         conn.commit()
         conn.close()
 
-        # Ir a la siguiente página o mostrar resultados si es la última
-        if pagina == 4:
+        if pagina == 1:
+            return redirect(url_for("imagen2"))
+        elif pagina == 2:
+            return redirect(url_for("imagen3"))
+        elif pagina == 3:
+            return redirect(url_for("imagen4"))
+        elif pagina == 4:
             return redirect(url_for("resultado"))
-        return redirect(url_for("encuesta", pagina=pagina + 1))
 
     return render_template(f"encuesta{pagina}.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
+
 
 
 
