@@ -2,6 +2,11 @@ from flask import Flask, render_template, request, redirect, session, url_for
 import sqlite3
 import os
 import pandas as pd
+import numpy as np 
+from sklearn.cluster import KMeans
+import re
+from predictor_notas import NotaPredictor
+
 
 app = Flask(__name__)
 app.secret_key = "supersecreto"
@@ -188,6 +193,68 @@ class HerramientasEducativas:
     def obtener_herramientas_recomendadas(cls, estilo):
         return [h["nombre"].replace("\n", "").strip() for h in cls.herramientas if h["tipo_app"] == estilo]
 
+# Agregar una ruta en Flask para que la predicción se muestre en el HTML
+
+    @staticmethod
+    def predecir_aprobacion(nombre, apellido):
+        """Predice si el estudiante aprobará o no basado en su estilo de aprendizaje y aplicaciones usadas."""
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Obtener información del estudiante
+        cursor.execute("""
+            SELECT ciclo_1, ciclo_2, ciclo_3, estilo, Apss_usadas
+            FROM usuarios WHERE nombre = ? AND apellido = ?
+        """, (nombre, apellido))
+        estudiante = cursor.fetchone()
+        conn.close()
+        
+        if not estudiante:
+            return "No se encontraron datos del estudiante."
+        
+        ciclo_1, ciclo_2, ciclo_3, estilo, apps_usadas = estudiante
+        
+        # Calcular promedio de notas
+        notas = [nota for nota in [ciclo_1, ciclo_2, ciclo_3] if nota is not None]
+        promedio = sum(notas) / len(notas) if notas else 0
+        
+        # Obtener herramientas recomendadas según el estilo
+        apps_recomendadas = {
+            "Matemáticas": ["Photomath", "Khan Academy", "Mathway", "Wolfram Alpha", "Desmos Graphing Calculator"],
+            "Química": ["Periodic Table", "ChemCrafter", "Chemistry Dictionary", "Chemistry Helper", "MEL Chemistry"],
+            "Física": ["Physics Toolbox", "Physics Formulas Free", "Physics Calculator", "PHYWIZ", "Fizyka"]
+        }
+        
+        # Obtener apps recomendadas según el estilo de aprendizaje
+        estilo_recomendado = apps_recomendadas.get(estilo, [])
+        
+        # Verificar cuántas apps usadas coinciden con las recomendadas
+        if apps_usadas:
+            apps_usadas_lista = [app.strip() for app in apps_usadas.split(',')]
+            coincidencias = len(set(apps_usadas_lista) & set(estilo_recomendado))
+            
+            # Criterios para aprobar
+            if coincidencias >= 3 and promedio >= 10:
+                resultado = "Aprobará"
+            else:
+                resultado = "Podría reprobar"
+        else:
+            resultado = "Podría reprobar"
+        
+        return resultado
+
+@app.route("/predecir_aprobacion", methods=["GET"])
+def predecir_aprobacion():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))  # Redirige a login si el usuario no está autenticado
+
+    nombre = session["nombre"]
+    apellido = session["apellido"]
+    resultado_aprobacion = PrediccionNotas.predecir_aprobacion(nombre, apellido)
+
+    return render_template("prediccion.html", prediccion=resultado_aprobacion)
+
 # Ruta principal (Muestra la bienvenida)
 @app.route('/')
 def home():
@@ -199,43 +266,66 @@ def home1():
     return redirect(url_for("registro"))
  
 # Ruta de registro de estudiante
+
 @app.route("/registro", methods=["GET", "POST"])
 def registro():
     if request.method == "POST":
-        email = request.form.get("email").strip().lower()
-        contraseña = request.form.get("contraseña").strip()
-        nombre = request.form.get("nombre").strip().title()
-        apellido = request.form.get("apellido").strip().title()
-        ciclo_1 = float(request.form.get("ciclo_1", 0.0))
-        ciclo_2 = float(request.form.get("ciclo_2", 0.0))
-        ciclo_3 = float(request.form.get("ciclo_3", 0.0))
+        email = request.form.get("email", "").strip().lower()
+        contraseña = request.form.get("contraseña", "").strip()
+        nombre = request.form.get("nombre", "").strip().title()
+        apellido = request.form.get("apellido", "").strip().title()
+
+        # Obtener y limpiar las entradas de notas de los ciclos
+        ciclo_1_str = request.form.get("ciclo_1", "").strip()
+        ciclo_2_str = request.form.get("ciclo_2", "").strip()
+        ciclo_3_str = request.form.get("ciclo_3", "").strip()
+        # Eliminar caracteres no numéricos (excepto '.' y ',') de las cadenas de notas
+        ciclo_1_str = re.sub(r"[^0-9\.,]", "", ciclo_1_str)
+        ciclo_2_str = re.sub(r"[^0-9\.,]", "", ciclo_2_str)
+        ciclo_3_str = re.sub(r"[^0-9\.,]", "", ciclo_3_str)
+        # Convertir a float, manejando casos de cadenas vacías o inválidas
+        if ciclo_1_str in ["", ".", ","]:
+            ciclo_1 = None
+        else:
+            try:
+                ciclo_1 = float(ciclo_1_str.replace(",", "."))
+            except ValueError:
+                ciclo_1 = None
+        if ciclo_2_str in ["", ".", ","]:
+            ciclo_2 = None
+        else:
+            try:
+                ciclo_2 = float(ciclo_2_str.replace(",", "."))
+            except ValueError:
+                ciclo_2 = None
+        if ciclo_3_str in ["", ".", ","]:
+            ciclo_3 = None
+        else:
+            try:
+                ciclo_3 = float(ciclo_3_str.replace(",", "."))
+            except ValueError:
+                ciclo_3 = None
 
         Apps_usadas = request.form.get("Apps_usadas", "").strip()
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-
         # Verificar si el usuario ya existe
         cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
-        usuario_existente = cursor.fetchone()
-
-        if usuario_existente:
+        if cursor.fetchone():
             conn.close()
             return render_template("registro.html", error="Este email ya está registrado. Intenta iniciar sesión.")
 
-        # Insertar el nuevo usuario en SQLite
+        # Insertar el nuevo usuario en SQLite (las notas None se guardarán como NULL)
         cursor.execute("""
             INSERT INTO usuarios (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas))
-
         conn.commit()
         conn.close()
 
-        # **Guardar en el dataset CSV**
+        # Actualizar también el dataset CSV con la nueva entrada
         df = pd.read_csv(DATASET_PATH)
-
-        # Crear una nueva fila con los datos
         nueva_fila = pd.DataFrame({
             "Nombre": [nombre],
             "Apellido": [apellido],
@@ -245,14 +335,11 @@ def registro():
             "ciclo_3": [ciclo_3],
             "apps usadas": [Apps_usadas]
         })
-
-        # Agregar la fila al dataset
         df = pd.concat([df, nueva_fila], ignore_index=True)
         df.to_csv(DATASET_PATH, index=False)
 
-        return redirect(url_for("login"))  # Redirige al login después del registro
-
-    return render_template("registro.html")
+        return redirect(url_for("login"))
+    return render_template("registro.html") 
 
 # Ruta de login
 @app.route("/login", methods=["GET", "POST"])
@@ -335,7 +422,7 @@ def encuesta(pagina):
 
         conn.commit()
         conn.close()
-
+              
         if pagina == 1:
             return redirect(url_for("imagen2"))
         elif pagina == 2:
@@ -344,8 +431,101 @@ def encuesta(pagina):
             return redirect(url_for("imagen4"))
         elif pagina == 4:
             return redirect(url_for("resultado"))
+     
 
     return render_template(f"encuesta{pagina}.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
+class PrediccionNotas:
+    @staticmethod
+    def obtener_datos():
+        """Carga los datos de la base de datos y el dataset histórico."""
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nombre, apellido, ciclo_1, ciclo_2, ciclo_3, estilo, Apps_usadas FROM usuarios")
+        usuarios = cursor.fetchall()
+        conn.close()
+
+        df_usuarios = pd.DataFrame(usuarios, columns=['Nombre', 'Apellido', 'ciclo_1', 'ciclo_2', 'ciclo_3', 'Estilo', 'Apps_usadas'])
+
+        # Convertir notas a números
+        for col in ['ciclo_1', 'ciclo_2', 'ciclo_3']:
+            df_usuarios[col] = df_usuarios[col].astype(str).str.replace(r"[^0-9\.\-]", "", regex=True)
+            df_usuarios[col] = pd.to_numeric(df_usuarios[col], errors='coerce')
+
+        # Cargar datos históricos desde CSV
+        df_datos = pd.read_csv(DATASET_PATH)
+        columnas_necesarias = ['Nombre', 'Apellido', 'ciclo_1', 'ciclo_2', 'ciclo_3']
+        df_datos = df_datos[columnas_necesarias]
+
+        # Unir los datos de usuarios actuales con los históricos
+        df = pd.merge(df_usuarios, df_datos, on=['Nombre', 'Apellido'], how='left', suffixes=('_db', '_csv'))
+
+        # Unificar columnas de ciclos
+        for i in range(1, 4):
+            df[f'ciclo_{i}'] = df[f'ciclo_{i}_csv'].combine_first(df[f'ciclo_{i}_db'])
+
+        df.drop(columns=[col for col in df.columns if '_csv' in col or '_db' in col], inplace=True)
+
+        # Convertir categorías a numérico
+        df['Estilo'] = pd.to_numeric(df['Estilo'], errors='coerce').fillna(0).astype(int)
+        df['Apps_usadas'] = pd.to_numeric(df['Apps_usadas'], errors='coerce').fillna(0).astype(int)
+
+        # Rellenar valores faltantes con la media de la columna
+        df.fillna(df.mean(numeric_only=True), inplace=True)
+        df.dropna(inplace=True)
+
+        return df
+
+    @staticmethod
+    def entrenar_modelo():
+        """Entrena un modelo K-Means basado en los datos del estudiante."""
+        df = PrediccionNotas.obtener_datos()
+        if df.empty or len(df) < 4:
+            return None, df
+
+        columnas_modelo = ['ciclo_1', 'ciclo_2', 'ciclo_3', 'Estilo', 'Apps_usadas']
+        X = df[columnas_modelo].astype(float)
+
+        kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+        kmeans.fit(X)
+        df['Cluster'] = kmeans.predict(X)
+
+        return kmeans, df
+
+@app.route('/resultado_notas', methods=['GET'])
+def resultado_notas():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))  
+
+    usuario_id = session["usuario_id"]
+    nombre = session["nombre"]
+    apellido = session["apellido"]
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = ?", (usuario_id,))
+    usuario_data = cursor.fetchone()
+    conn.close()
+
+    if not usuario_data:
+        return "No se encontraron datos del usuario", 404
+
+    estilo_aprendizaje, apps_usadas = usuario_data
+
+    predictor = NotaPredictor()
+    nota_predicha = predictor.predecir_nota(estilo_aprendizaje, apps_usadas)
+
+    return render_template("resultado_notas.html", nombre=nombre, apellido=apellido, estilo=estilo_aprendizaje, nota_predicha=nota_predicha)
+
+@app.route("/predecir_nota")
+def predecir_nota():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    nombre = session.get("nombre")
+    apellido = session.get("apellido")
+    prediccion = PrediccionNotas.predecir_nota(nombre, apellido)
+
+    return render_template("prediccion.html", prediccion=prediccion)
 
 # Ruta de resultados de la encuesta
 @app.route('/resultado', methods=['GET', 'POST'])
@@ -360,12 +540,12 @@ def resultado():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
         
-    # Verificar cuántas respuestas que ha respondido el usuario
+    # Verificar cuántas respuestas ha respondido el usuario
     cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
     num_respuestas = cursor.fetchone()[0]
     
     # Número total de preguntas
-    total_preguntas = 40
+    total_preguntas = len(preguntas)  # Asegurarse de que `preguntas` contiene todas las preguntas
     
     # Si el usuario no ha respondido todas las preguntas, redirigir a progreso
     if num_respuestas < total_preguntas:
@@ -374,13 +554,13 @@ def resultado():
 
     # Obtener respuestas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    respuestas = dict(cursor.fetchall())  # Convertir a diccionario para fácil acceso
+    respuestas = dict(cursor.fetchall())  
     conn.close()
 
     estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
 
-    for i, pregunta in enumerate(preguntas):
-        respuesta = respuestas.get(pregunta["texto"])  # Cambiar clave de acceso a la pregunta real
+    for pregunta in preguntas:
+        respuesta = respuestas.get(pregunta["texto"])
         if respuesta == '+':
             estilos[pregunta["estilo"]] += 1  
 
@@ -397,16 +577,22 @@ def resultado():
     promedio_rendimiento = rendimiento["promedio"]
     tipo_rendimiento = rendimiento["tipo_rendimiento"]
 
-    # Agregar la lógica para determinar la última página respondida
-    ultima_pagina = 1  # Por defecto, empezar en la página 1
-
+    # Obtener estilo y apps usadas para predecir la nota
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(DISTINCT pregunta) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
-    num_respuestas = cursor.fetchone()[0]
+    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = ?", (usuario_id,))
+    usuario_data = cursor.fetchone()
     conn.close()
 
-    # Ajustar la última página basada en la cantidad de respuestas guardadas
+    if usuario_data:
+        estilo_aprendizaje, apps_usadas = usuario_data
+        predictor = NotaPredictor()
+        nota_predicha = predictor.predecir_nota(estilo_aprendizaje, apps_usadas)
+    else:
+        nota_predicha = "N/A"
+
+    # Determinar la última página respondida
+    ultima_pagina = 1
     if num_respuestas > 60:
         ultima_pagina = 4
     elif num_respuestas > 40:
@@ -419,7 +605,9 @@ def resultado():
                            estilo=estilo_predominante, 
                            promedio_rendimiento=promedio_rendimiento, 
                            tipo_rendimiento=tipo_rendimiento, 
-                           ultima_pagina=ultima_pagina)
+                           ultima_pagina=ultima_pagina,
+                           nota_predicha=nota_predicha)
+
 
 @app.route('/recomendaciones', methods=['GET'])
 def recomendaciones():
@@ -450,6 +638,7 @@ def recomendaciones():
 
     return render_template('recomendaciones.html', recomendaciones=recomendaciones, Estilos=Estilos)
 
+
 @app.route("/ver_progreso")
 def ver_progreso():
     if "usuario_id" not in session:
@@ -477,31 +666,30 @@ def guardar_respuestas():
     cursor = conn.cursor()
 
     for i, pregunta in enumerate(preguntas):
-        respuesta = request.form.get(pregunta["texto"])
-
+        respuesta = request.form.get(f'pregunta{i+1}')  # Se asegura de capturar correctamente la respuesta
+        
         if respuesta:  # Solo guarda respuestas marcadas
             cursor.execute("""
                 INSERT OR REPLACE INTO respuestas (id_usuario, pregunta, respuesta)
                 VALUES (?, ?, ?)
             """, (usuario_id, pregunta["texto"], respuesta))
-    
-    print(f"Guardando respuesta '{respuesta}' para la pregunta '{pregunta['texto']}'")
 
     conn.commit()
     conn.close()
 
-    return redirect(url_for("ver_progreso"))  # Después de guardar, ir al progreso
+    # Verificar si ya respondió todas las preguntas
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    num_respuestas = cursor.fetchone()[0]
+    conn.close()
 
-@app.route("/predecir_nota")
-def predecir_nota():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
+    # Redirigir al usuario a la siguiente página de la encuesta
+    if num_respuestas < len(preguntas):
+        return redirect(url_for("encuesta", pagina=(num_respuestas // 20) + 1))
+    else:
+        return redirect(url_for("resultado"))  # Si termina, ir a resultados
 
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-    prediccion = PrediccionNotas.predecir_nota(nombre, apellido)
-
-    return render_template("dashboard.html", prediccion=prediccion)
 
 # Ruta para cerrar sesión
 @app.route("/logout")
