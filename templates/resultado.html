@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resultado de Estilo de Aprendizaje</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head> 
@@ -9,20 +10,21 @@
 
     <div id="resultado-container">
         <h2>Resultados de {{ nombre }} {{ apellido }}</h2>
-        
-        <h3>📌 Estilo de aprendizaje predominante: <strong>{{ estilo }}</strong></h3>
 
-        <h3>📊 Rendimiento Académico</h3>
-        <p>Tu promedio general de tus 3 ultimos ciclos es: {{ promedio_rendimiento }}</p>
-        <p>Tu escala de clasificación es: {{ tipo_rendimiento }}</p>
+        <h3>📌 Estilo de aprendizaje predominante:</h3>
+        <p><strong>{{ estilo }}</strong></p>
+
+        <h3>📊 Rendimiento académico</h3>
+        <p>Tu promedio general de tus 3 últimos ciclos es: <strong>{{ promedio_rendimiento }}</strong></p>
+        <p>Tu escala de clasificación es: <strong>{{ tipo_rendimiento }}</strong></p>
 
         <div class="botones">
             <a href="{{ url_for('dashboard') }}"><button>Volver</button></a>
-            <a href="{{ url_for('encuesta',pagina=ultima_pagina)}}"><button>Volver a Realizar la Encuesta</button></a>
-            <a href="{{ url_for('recomendaciones') }}" class="button">Ver Recomendaciones</a>
+            <a href="{{ url_for('encuesta', pagina=ultima_pagina) }}"><button>Volver a realizar la encuesta</button></a>
+            <a href="{{ url_for('recomendaciones') }}" class="button">Ver recomendaciones</a>
+
         </div>
     </div>
 
 </body>
 </html>
-

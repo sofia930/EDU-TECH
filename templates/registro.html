@@ -31,17 +31,21 @@
         <input type="password" id="contraseña" name="contraseña" required><br>
     
         <h3>Ingresa tu ultimo promedio:</h3>
-        <label for="ciclo_1">ciclo_1:</label>
-        <input type="number" id="ciclo_1" name="ciclo_1" min="0" max="20" required><br>
+        <label for="ciclo_1">Ciclo 1:</label>
+        <input type="number" id="ciclo_1" name="ciclo_1" step="0.001" min="0.0" max="20.0" required><br>
     
         <h3>Ingresa tu penultimo promedio:</h3>
-        <label for="ciclo_2">ciclo_2:</label>
-        <input type="number" id="ciclo_2" name="ciclo_2" min="0" max="20" required><br>
+        <label for="ciclo_2">Ciclo 2:</label>
+        <input type="number" id="ciclo_2" name="ciclo_2" step="0.001" min="0.0" max="20.0" required><br>
 
         <h3>Ingresa tu antepenultimo promedio:</h3>
-        <label for="ciclo_3">ciclo_3:</label>
-        <input type="number" id="ciclo_3" name="ciclo_3" min="0" max="20" required><br>
-    
+        <label for="ciclo_3">Ciclo 3:</label>
+        <input type="number" id="ciclo_3" name="ciclo_3" step="0.001" min="0.0" max="20." required><br>
+
+        <h3>Ingresa las aplicaciones que usas para estudiar:</h3>
+        <label for="apps_usadas">Aplicaciones (separadas por comas):</label>
+        <input type="text" id="Apps_usadas" name="Apps_usadas" placeholder="Ej: Duolingo, Photomath, Khan Academy"><br>
+
         <button type="submit">Registrar</button>
     </form>
 

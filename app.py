@@ -23,9 +23,11 @@ def verificar_base_datos():
         contraseña TEXT NOT NULL,
         nombre TEXT NOT NULL,
         apellido TEXT NOT NULL,
-        ciclo_1 INTEGER,
-        ciclo_2 INTEGER,
-        ciclo_3 INTEGER
+        ciclo_1 REAL,
+        ciclo_2 REAL,
+        ciclo_3 REAL,
+        estilo TEXT,
+        Apss_usadas TEXT        
     )
     """)
 
@@ -204,11 +206,11 @@ def registro():
         contraseña = request.form.get("contraseña").strip()
         nombre = request.form.get("nombre").strip().title()
         apellido = request.form.get("apellido").strip().title()
+        ciclo_1 = float(request.form.get("ciclo_1", 0.0))
+        ciclo_2 = float(request.form.get("ciclo_2", 0.0))
+        ciclo_3 = float(request.form.get("ciclo_3", 0.0))
 
-        # Obtener las calificaciones
-        ciclo_1 = request.form.get("ciclo_1")
-        ciclo_2 = request.form.get("ciclo_2")
-        ciclo_3 = request.form.get("ciclo_3")
+        Apps_usadas = request.form.get("Apps_usadas", "").strip()
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -223,9 +225,9 @@ def registro():
 
         # Insertar el nuevo usuario en SQLite
         cursor.execute("""
-            INSERT INTO usuarios (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3))
+            INSERT INTO usuarios (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas))
 
         conn.commit()
         conn.close()
@@ -240,7 +242,8 @@ def registro():
             "Email": [email],
             "ciclo_1": [ciclo_1],
             "ciclo_2": [ciclo_2],
-            "ciclo_3": [ciclo_3]
+            "ciclo_3": [ciclo_3],
+            "apps usadas": [Apps_usadas]
         })
 
         # Agregar la fila al dataset
@@ -356,11 +359,23 @@ def resultado():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+        
+    # Verificar cuántas respuestas que ha respondido el usuario
+    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    num_respuestas = cursor.fetchone()[0]
+    
+    # Número total de preguntas
+    total_preguntas = 40
+    
+    # Si el usuario no ha respondido todas las preguntas, redirigir a progreso
+    if num_respuestas < total_preguntas:
+        conn.close()
+        return render_template("progreso.html", error="Aún no has terminado la encuesta. Responde todas las preguntas para ver tu estilo de aprendizaje.")
+
+    # Obtener respuestas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
     respuestas = dict(cursor.fetchall())  # Convertir a diccionario para fácil acceso
     conn.close()
-
-    print("Respuestas obtenidas de la BD:", respuestas)
 
     estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
 
@@ -369,12 +384,7 @@ def resultado():
         if respuesta == '+':
             estilos[pregunta["estilo"]] += 1  
 
-    print("Conteo de estilos antes de elegir:", estilos)
-
     estilo_predominante = max(estilos, key=estilos.get)
-
-    print(f"Estilo seleccionado: {estilo_predominante}")
-    print(f"Actualizando estilo en la BD: {estilo_predominante} para usuario ID {usuario_id}")
 
     # Guardar el estilo de aprendizaje en la base de datos
     conn = sqlite3.connect(DB_PATH)
@@ -446,7 +456,6 @@ def ver_progreso():
         return redirect(url_for("login"))  # Redirige a login si el usuario no ha iniciado sesión
 
     usuario_id = session["usuario_id"]
-
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -454,6 +463,7 @@ def ver_progreso():
     respuestas = cursor.fetchall()
     
     conn.close()
+    respuestas = list(dict.fromkeys(respuestas)) #eliminara duplicados al ver el progreso de las respuestas
 
     return render_template("progreso.html", respuestas=respuestas)
 
@@ -471,10 +481,8 @@ def guardar_respuestas():
 
         if respuesta:  # Solo guarda respuestas marcadas
             cursor.execute("""
-                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
+                INSERT OR REPLACE INTO respuestas (id_usuario, pregunta, respuesta)
                 VALUES (?, ?, ?)
-                ON CONFLICT(id_usuario, pregunta) 
-                DO UPDATE SET respuesta = excluded.respuesta
             """, (usuario_id, pregunta["texto"], respuesta))
     
     print(f"Guardando respuesta '{respuesta}' para la pregunta '{pregunta['texto']}'")
@@ -483,6 +491,17 @@ def guardar_respuestas():
     conn.close()
 
     return redirect(url_for("ver_progreso"))  # Después de guardar, ir al progreso
+
+@app.route("/predecir_nota")
+def predecir_nota():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    nombre = session["nombre"]
+    apellido = session["apellido"]
+    prediccion = PrediccionNotas.predecir_nota(nombre, apellido)
+
+    return render_template("dashboard.html", prediccion=prediccion)
 
 # Ruta para cerrar sesión
 @app.route("/logout")
