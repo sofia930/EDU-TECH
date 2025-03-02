@@ -17,14 +17,13 @@
         <h3>📊 Rendimiento académico</h3>
         <p>Tu promedio general de tus 3 últimos ciclos es: <strong>{{ promedio_rendimiento }}</strong></p>
         <p>Tu escala de clasificación es: <strong>{{ tipo_rendimiento }}</strong></p>
-        <h3> Predicción de tu nota en tu otro ciclo </h3>
-        <p>Basado en tu estilo de aprendizaje y las aplicaciones usadas, tu nota estimada es: <strong>{{ nota_predicha }}</strong></p>
+
         <div class="botones">
             <a href="{{ url_for('dashboard') }}"><button>Volver</button></a>
             <a href="{{ url_for('encuesta', pagina=ultima_pagina) }}"><button>Volver a realizar la encuesta</button></a>
-            <a href="{{ url_for('recomendaciones') }}" class="button">Ver recomendaciones</a>
-
-        </div>
+            <a href="{{ url_for('recomendaciones') }}" ><button>Ver recomendaciones</button></a>
+            <a href="{{ url_for('prediccion_nota') }}"><button>📊 Ver Predicción de Nota</button></a>
+           
     </div>
 
 </body>

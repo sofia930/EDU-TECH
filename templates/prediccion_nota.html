@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predicción de Nota</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <div class="container">
+        <h2>📊 Predicción de Nota</h2>
+        <p>Basado en tu estilo de aprendizaje y las aplicaciones usadas, tu nota estimada es:</p>
+        <p class="nota">{{ nota_predicha }}</p>
+        <a href="{{ url_for('resultado') }}">
+            <button class="boton-volver">🔙 Volver a Resultados</button>
+        </a>
+    </div>
+
+</body>
+</html>

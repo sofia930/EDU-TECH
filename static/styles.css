@@ -1,19 +1,19 @@
-/* Fondo para la página de bienvenida */
 body {
-    background-image: url('/static/fondo.jpg'); /* Asegurar la ruta correcta*/
-    background-size: cover; /*Hace que la imagen de fondo cubra toda la pantalla sin distorsionarse.*/
-    background-position: center; /*Centra la imagen de fondo*/
-    background-repeat: no-repeat;/*Evita que la imagen de fondo se repita.*/
-    min-height: 100vh; /* Asegura que el fondo cubra toda la pantalla */
-    margin: 0;/* Elimina cualquier margen y relleno predeterminado.*/
-    padding: 0;/*Elimina cualquier margen y relleno predeterminado.*/
-    font-family: Arial, sans-serif;/*Define la fuente de la página.*/
-    color: #333;/*Establece el color del texto en un tono oscuro.*/
+    background-image: url('/static/fondo.jpg'); /* Imagen de fondo */
+    background-size: cover; /* Cubre toda la pantalla */
+    background-position: center; /* Centra la imagen */
+    background-repeat: no-repeat; /* Evita repeticiones */
+    min-height: 100vh; /* Altura mínima del viewport */
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    color: #333;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
 }
+
 
 /* Contenedor de la página de bienvenida */
 #welcome-container {
@@ -38,6 +38,11 @@ body {
     color: #555;
     margin-bottom: 15px;
 }
+/* Estilos del título */
+h2 {
+    color: #333;
+}
+
 
 /* Botones de Bienvenida */
 .botones {
@@ -104,4 +109,32 @@ p {
 .btn:hover {
     background-color: #0056b3;
 }
+/* Estilos de la nota predicha */
+.nota {
+    font-size: 24px;
+    font-weight: bold;
+    color: #007bff;
+}
 
+/* Estilos del botón */
+.boton-volver {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.boton-volver:hover {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

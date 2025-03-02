@@ -3,9 +3,11 @@ import sqlite3
 import os
 import pandas as pd
 import numpy as np 
-from sklearn.cluster import KMeans
 import re
-from predictor_notas import NotaPredictor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import joblib
 
 
 app = Flask(__name__)
@@ -15,6 +17,7 @@ app.secret_key = "supersecreto"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
+MODEL_PATH = os.path.join(BASE_DIR, 'modelo_notas.pkl')
 
 def verificar_base_datos():
     conn = sqlite3.connect(DB_PATH)
@@ -244,17 +247,6 @@ class HerramientasEducativas:
         
         return resultado
 
-@app.route("/predecir_aprobacion", methods=["GET"])
-def predecir_aprobacion():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))  # Redirige a login si el usuario no está autenticado
-
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-    resultado_aprobacion = PrediccionNotas.predecir_aprobacion(nombre, apellido)
-
-    return render_template("prediccion.html", prediccion=resultado_aprobacion)
-
 # Ruta principal (Muestra la bienvenida)
 @app.route('/')
 def home():
@@ -434,72 +426,105 @@ def encuesta(pagina):
      
 
     return render_template(f"encuesta{pagina}.html", preguntas=preguntas_pagina, pagina=pagina, total_paginas=4, respuestas_previas=respuestas_previas)
-class PrediccionNotas:
-    @staticmethod
-    def obtener_datos():
-        """Carga los datos de la base de datos y el dataset histórico."""
+
+class NotaPredictor:
+    def __init__(self, model_path=MODEL_PATH):
+        if os.path.exists(model_path):
+            try:
+                loaded_data = joblib.load(model_path)
+                if isinstance(loaded_data, tuple) and len(loaded_data) == 2:
+                    self.model, self.label_encoder = loaded_data
+                else:
+                    raise ValueError("El archivo del modelo no contiene los datos esperados.")
+            except Exception as e:
+                print(f"⚠️ Error al cargar el modelo: {e}. Se reentrenará desde cero.")
+                self.model = None
+                self.label_encoder = LabelEncoder()
+                self.entrenar_modelo()
+        else:
+            self.model = None
+            self.label_encoder = LabelEncoder()
+            self.entrenar_modelo()
+    
+    def entrenar_modelo(self):
+        # Conectar a la base de datos SQLite y obtener datos actualizados
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT nombre, apellido, ciclo_1, ciclo_2, ciclo_3, estilo, Apps_usadas FROM usuarios")
-        usuarios = cursor.fetchall()
+        cursor.execute("SELECT estilo, Apps_usadas, ciclo_1, ciclo_2, ciclo_3 FROM usuarios WHERE estilo IS NOT NULL AND Apps_usadas IS NOT NULL")
+        usuarios_data = cursor.fetchall()
         conn.close()
 
-        df_usuarios = pd.DataFrame(usuarios, columns=['Nombre', 'Apellido', 'ciclo_1', 'ciclo_2', 'ciclo_3', 'Estilo', 'Apps_usadas'])
+        if not usuarios_data:
+            print("⚠️ No hay datos suficientes para entrenar el modelo.")
+            return
 
-        # Convertir notas a números
-        for col in ['ciclo_1', 'ciclo_2', 'ciclo_3']:
-            df_usuarios[col] = df_usuarios[col].astype(str).str.replace(r"[^0-9\.\-]", "", regex=True)
-            df_usuarios[col] = pd.to_numeric(df_usuarios[col], errors='coerce')
+        df = pd.DataFrame(usuarios_data, columns=['estilo', 'Apps_usadas', 'ciclo_1', 'ciclo_2', 'ciclo_3'])
 
-        # Cargar datos históricos desde CSV
-        df_datos = pd.read_csv(DATASET_PATH)
-        columnas_necesarias = ['Nombre', 'Apellido', 'ciclo_1', 'ciclo_2', 'ciclo_3']
-        df_datos = df_datos[columnas_necesarias]
+        # Codificar 'estilo' en valores numéricos
+        self.label_encoder = LabelEncoder()
+        df['estilo'] = self.label_encoder.fit_transform(df['estilo'].astype(str))
 
-        # Unir los datos de usuarios actuales con los históricos
-        df = pd.merge(df_usuarios, df_datos, on=['Nombre', 'Apellido'], how='left', suffixes=('_db', '_csv'))
+        # Convertir 'Apps_usadas' a la cantidad de aplicaciones usadas
+        df['Apps_usadas'] = df['Apps_usadas'].astype(str).apply(lambda x: len(x.split(',')) if x else 0)
 
-        # Unificar columnas de ciclos
-        for i in range(1, 4):
-            df[f'ciclo_{i}'] = df[f'ciclo_{i}_csv'].combine_first(df[f'ciclo_{i}_db'])
+        # Calcular la nota promedio de los ciclos
+        df['nota_promedio'] = df[['ciclo_1', 'ciclo_2', 'ciclo_3']].mean(axis=1)
 
-        df.drop(columns=[col for col in df.columns if '_csv' in col or '_db' in col], inplace=True)
+        # Definir las variables de entrada y salida
+        X = df[['estilo', 'Apps_usadas']]
+        y = df['nota_promedio']
 
-        # Convertir categorías a numérico
-        df['Estilo'] = pd.to_numeric(df['Estilo'], errors='coerce').fillna(0).astype(int)
-        df['Apps_usadas'] = pd.to_numeric(df['Apps_usadas'], errors='coerce').fillna(0).astype(int)
+        if len(df) < 5:
+            print("⚠️ Datos insuficientes para entrenar el modelo de predicción.")
+            return
 
-        # Rellenar valores faltantes con la media de la columna
-        df.fillna(df.mean(numeric_only=True), inplace=True)
-        df.dropna(inplace=True)
+        # Entrenar el modelo
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model.fit(X_train, y_train)
 
-        return df
+        # Guardar el modelo entrenado y el label encoder correctamente
+        joblib.dump((model, self.label_encoder), MODEL_PATH)
+        self.model = model
 
-    @staticmethod
-    def entrenar_modelo():
-        """Entrena un modelo K-Means basado en los datos del estudiante."""
-        df = PrediccionNotas.obtener_datos()
-        if df.empty or len(df) < 4:
-            return None, df
+        print("✅ Modelo entrenado correctamente con datos actualizados.")
+    
+    def predecir_nota(self, estilo, apps_usadas):
+        if self.model is None:
+            return "Modelo no entrenado"
+        
+        # Verificar si el estilo está en los datos entrenados
+        if estilo not in self.label_encoder.classes_:
+            print(f"⚠️ Estilo '{estilo}' no reconocido, asignando 'Activo' por defecto.")
+            estilo = 'Activo'
+        
+        estilo_codificado = self.label_encoder.transform([estilo])[0]
+        
+        # Contar la cantidad de apps usadas
+        apps_cantidad = len(apps_usadas.split(',')) if apps_usadas else 0
 
-        columnas_modelo = ['ciclo_1', 'ciclo_2', 'ciclo_3', 'Estilo', 'Apps_usadas']
-        X = df[columnas_modelo].astype(float)
+        # Realizar la predicción
+        entrada = np.array([[estilo_codificado, apps_cantidad]])
+        nota_predicha = self.model.predict(entrada)[0]
 
-        kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
-        kmeans.fit(X)
-        df['Cluster'] = kmeans.predict(X)
+        return round(nota_predicha, 2)
 
-        return kmeans, df
+# Eliminar modelo anterior si existe y reentrenar
+if os.path.exists(MODEL_PATH):
+    os.remove(MODEL_PATH)
 
-@app.route('/resultado_notas', methods=['GET'])
-def resultado_notas():
+# Entrenar el modelo al iniciar
+predictor = NotaPredictor()
+if not os.path.exists(MODEL_PATH):
+    predictor.entrenar_modelo()
+
+@app.route('/prediccion_nota', methods=['GET'])
+def prediccion_nota():
     if "usuario_id" not in session:
-        return redirect(url_for("login"))  
+        return redirect(url_for("login"))
 
     usuario_id = session["usuario_id"]
-    nombre = session["nombre"]
-    apellido = session["apellido"]
-
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = ?", (usuario_id,))
@@ -514,18 +539,8 @@ def resultado_notas():
     predictor = NotaPredictor()
     nota_predicha = predictor.predecir_nota(estilo_aprendizaje, apps_usadas)
 
-    return render_template("resultado_notas.html", nombre=nombre, apellido=apellido, estilo=estilo_aprendizaje, nota_predicha=nota_predicha)
+    return render_template("prediccion_nota.html", nota_predicha=nota_predicha)
 
-@app.route("/predecir_nota")
-def predecir_nota():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    nombre = session.get("nombre")
-    apellido = session.get("apellido")
-    prediccion = PrediccionNotas.predecir_nota(nombre, apellido)
-
-    return render_template("prediccion.html", prediccion=prediccion)
 
 # Ruta de resultados de la encuesta
 @app.route('/resultado', methods=['GET', 'POST'])
