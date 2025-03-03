@@ -221,54 +221,6 @@ class HerramientasEducativas:
 
 # Agregar una ruta en Flask para que la predicción se muestre en el HTML
 
-    @staticmethod
-    def predecir_aprobacion(nombre, apellido):
-        """Predice si el estudiante aprobará o no basado en su estilo de aprendizaje y aplicaciones usadas."""
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Obtener información del estudiante
-        cursor.execute("""
-            SELECT ciclo_1, ciclo_2, ciclo_3, estilo, Apss_usadas
-            FROM usuarios WHERE nombre = ? AND apellido = ?
-        """, (nombre, apellido))
-        estudiante = cursor.fetchone()
-        conn.close()
-        
-        if not estudiante:
-            return "No se encontraron datos del estudiante."
-        
-        ciclo_1, ciclo_2, ciclo_3, estilo, apps_usadas = estudiante
-        
-        # Calcular promedio de notas
-        notas = [nota for nota in [ciclo_1, ciclo_2, ciclo_3] if nota is not None]
-        promedio = sum(notas) / len(notas) if notas else 0
-        
-        # Obtener herramientas recomendadas según el estilo
-        apps_recomendadas = {
-            "Matemáticas": ["Photomath", "Khan Academy", "Mathway", "Wolfram Alpha", "Desmos Graphing Calculator"],
-            "Química": ["Periodic Table", "ChemCrafter", "Chemistry Dictionary", "Chemistry Helper", "MEL Chemistry"],
-            "Física": ["Physics Toolbox", "Physics Formulas Free", "Physics Calculator", "PHYWIZ", "Fizyka"]
-        }
-        
-        # Obtener apps recomendadas según el estilo de aprendizaje
-        estilo_recomendado = apps_recomendadas.get(estilo, [])
-        
-        # Verificar cuántas apps usadas coinciden con las recomendadas
-        if apps_usadas:
-            apps_usadas_lista = [app.strip() for app in apps_usadas.split(',')]
-            coincidencias = len(set(apps_usadas_lista) & set(estilo_recomendado))
-            
-            # Criterios para aprobar
-            if coincidencias >= 3 and promedio >= 10:
-                resultado = "Aprobará"
-            else:
-                resultado = "Podría reprobar"
-        else:
-            resultado = "Podría reprobar"
-        
-        return resultado
 
 # Ruta principal (Muestra la bienvenida)
 @app.route('/')
