@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, session, url_for
-import sqlite3
+import psycopg2
 import os
 import pandas as pd
 import numpy as np 
@@ -15,13 +15,16 @@ app.secret_key = "supersecreto"
 
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'database.db')
+DATABASE_URL = "postgresql://mi_usuario:mi_contraseña@localhost/mi_base_de_datos" 
 DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
 MODEL_PATH = os.path.join(BASE_DIR, 'modelo_notas.pkl')
 
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
 def verificar_base_datos():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    conn = get_db_connection()  # Usa la nueva conexión
+    cursor = conn.cursor() 
     
     # Crear tabla de usuarios (ya está en tu código)
     cursor.execute("""
@@ -190,6 +193,26 @@ class HerramientasEducativas:
         {"nombre": "Chemcollective: Es una app en donde puedes usar herramientas y simulaciones de química para la educación.", "tipo_app": "Reflexivo"},
         {"nombre": "Rosetta Stone: Es una aplicación que usa un método de aprendizaje de idiomas basado en la inmersión.", "tipo_app": "Pragmático"},
         {"nombre": "Babbel: Es una plataforma de aprendizaje de idiomas con cursos estructurados y lecciones interactivas.", "tipo_app": "Pragmático"},
+        {"nombre": "Memrise: Es una plataforma de aprendizaje de idiomas con actividades dinamicas y juegos.", "tipo_app": "Activo"},
+        {"nombre": "CodeCombat: Es una plataforma para aprender a programar con un enfoque gamificado tipo RPG.", "tipo_app": "Activo"},
+        {"nombre": "Brilliant: Es una plataforma interactiva de aprendizaje de mátematica, ciencias y lógica.", "tipo_app": "Pragmatico"},
+        {"nombre": "Todoist: Aplicación de gestión de tareas y organización del tiempo.", "tipo_app": "Pragmatico"},
+        {"nombre": "Grammarly: Es un corrector gramatical avanzado para mejorar escritura en inglés.", "tipo_app": "Pragmatico"},
+        {"nombre": "MyStudyLife: Planificador académico para gestionar tareas, exámenes y horarios.", "tipo_app": "Pragmatico"},
+        {"nombre": "Desmos Scientific Calculator: Calculadora científica avanzada para resolver ecuaciones complejas.", "tipo_app": "Pragmatico"},
+        {"nombre": "Microsoft Math Solver: Resuelve problemas matemáticos con explicaciones paso a paso.", "tipo_app": "Pragmatico"},
+        {"nombre": "GoodNotes: Aplicación para tomar notas digitales organizadas y estructuradas.", "tipo_app": "Reflexivo"},
+        {"nombre": "Notion: Herramienta de productividad para organizar proyectos y aprendizaje.", "tipo_app": "Reflexivo"},
+        {"nombre": "AnkiDroid: Sistema de tarjetas de memoria para repasar conceptos a largo plazo.", "tipo_app": "Reflexivo"},
+        {"nombre": "Coursera: Cursos en línea con contenido detallado y enfoque académico estructurado.", "tipo_app": "Reflexivo"},
+        {"nombre": "Google Keep: Aplicación ligera para tomar notas rápidas y estructurarlas en categorías.", "tipo_app": "Reflexivo"},
+        {"nombre": "Wolfram Alpha: Motor de búsqueda computacional que resuelve ecuaciones y problemas científicos.", "tipo_app": "Teorico"},
+        {"nombre": "Physics Toolbox Suite: Aplicación con herramientas avanzadas para experimentos científicos.", "tipo_app": "Teorico"},
+        {"nombre": "Stanford Online: Acceso a material educativo de la Universidad de Stanford.", "tipo_app": "Teorico"},
+        {"nombre": "EdX: Plataforma de aprendizaje con cursos universitarios en ciencias y tecnología.", "tipo_app": "Teorico"},
+        {"nombre": "MIT OpenCourseWare:Cursos gratuitos del MIT con contenido académico riguroso.", "tipo_app": "Teorico"},
+        {"nombre": "Lightbot: Juego educativo que enseña lógica de programación de forma visual.", "tipo_app": "Activo"},
+        {"nombre": "Todoist: Aplicación de gestión de tareas y organización del tiempo.", "tipo_app": "Reflexivo"},
         ]
     
     @classmethod
