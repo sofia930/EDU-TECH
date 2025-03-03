@@ -144,11 +144,11 @@ preguntas =  [
 class CalculoDeRendimiento:
     @staticmethod
     def obtener_rendimiento(nombre, apellido):
-        conn = sqlite3.connect(DB_PATH)
+        conn =  get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT ciclo_1, ciclo_2, ciclo_3
-            FROM usuarios WHERE nombre = ? AND apellido = ?
+            FROM usuarios WHERE nombre = %s AND apellido = %s
         """, (nombre, apellido))
         rendimiento = cursor.fetchone()
         conn.close()
@@ -275,10 +275,10 @@ def registro():
 
         Apps_usadas = request.form.get("Apps_usadas", "").strip()
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         # Verificar si el usuario ya existe
-        cursor.execute("SELECT * FROM usuarios WHERE email = ?", (email,))
+        cursor.execute("SELECT * FROM usuarios WHERE email = %s", (email,))
         if cursor.fetchone():
             conn.close()
             return render_template("registro.html", error="Este email ya está registrado. Intenta iniciar sesión.")
@@ -315,9 +315,9 @@ def login():
         email = request.form["email"].strip().lower()
         contraseña = request.form["contraseña"]
 
-        conn = sqlite3.connect(DB_PATH)
+        conn =  get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = ? AND contraseña = ?", (email, contraseña))
+        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = %s AND contraseña = %s", (email, contraseña))
         usuario = cursor.fetchone()
         conn.close()
 
@@ -370,21 +370,21 @@ def encuesta(pagina):
     fin = inicio + 20
     preguntas_pagina = preguntas[inicio:fin]
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas_previas = dict(cursor.fetchall())  
     conn.close()
 
     if request.method == "POST":
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         for i, pregunta in enumerate(preguntas_pagina):
             respuesta = request.form.get(f'pregunta{inicio + i + 1}')
             if respuesta:
                 cursor.execute("""
                 INSERT OR REPLACE INTO respuestas (id_usuario, pregunta, respuesta)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """, (usuario_id, pregunta["texto"], respuesta))
 
         conn.commit()
@@ -423,7 +423,7 @@ class NotaPredictor:
     
     def entrenar_modelo(self):
         # Conectar a la base de datos SQLite y obtener datos actualizados
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT estilo, Apps_usadas, ciclo_1, ciclo_2, ciclo_3 FROM usuarios WHERE estilo IS NOT NULL AND Apps_usadas IS NOT NULL")
         usuarios_data = cursor.fetchall()
@@ -500,9 +500,9 @@ def prediccion_nota():
 
     usuario_id = session["usuario_id"]
     
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = %s", (usuario_id,))
     usuario_data = cursor.fetchone()
     conn.close()
 
@@ -527,11 +527,11 @@ def resultado():
     nombre = session["nombre"]
     apellido = session["apellido"]
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection() 
     cursor = conn.cursor()
         
     # Verificar cuántas respuestas ha respondido el usuario
-    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     num_respuestas = cursor.fetchone()[0]
     
     # Número total de preguntas
@@ -543,7 +543,7 @@ def resultado():
         return render_template("progreso.html", error="Aún no has terminado la encuesta. Responde todas las preguntas para ver tu estilo de aprendizaje.")
 
     # Obtener respuestas del usuario
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas = dict(cursor.fetchall())  
     conn.close()
 
@@ -557,9 +557,9 @@ def resultado():
     estilo_predominante = max(estilos, key=estilos.get)
 
     # Guardar el estilo de aprendizaje en la base de datos
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE usuarios SET estilo = ? WHERE id_usuario = ?", (estilo_predominante, usuario_id))
+    cursor.execute("UPDATE usuarios SET estilo = %s WHERE id_usuario = %s", (estilo_predominante, usuario_id))
     conn.commit()
     conn.close()
 
@@ -568,9 +568,9 @@ def resultado():
     tipo_rendimiento = rendimiento["tipo_rendimiento"]
 
     # Obtener estilo y apps usadas para predecir la nota
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = %s", (usuario_id,))
     usuario_data = cursor.fetchone()
     conn.close()
 
@@ -610,7 +610,7 @@ def recomendaciones():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    cursor.execute("SELECT estilo FROM usuarios WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT estilo FROM usuarios WHERE id_usuario = %s", (usuario_id,))
     resultado = cursor.fetchone()
     conn.close()
 
@@ -635,10 +635,10 @@ def ver_progreso():
         return redirect(url_for("login"))  # Redirige a login si el usuario no ha iniciado sesión
 
     usuario_id = session["usuario_id"]
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas = cursor.fetchall()
     
     conn.close()
@@ -652,7 +652,7 @@ def guardar_respuestas():
         return redirect(url_for("login"))
 
     usuario_id = session["usuario_id"]
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
 
     for i, pregunta in enumerate(preguntas):
@@ -661,16 +661,16 @@ def guardar_respuestas():
         if respuesta:  # Solo guarda respuestas marcadas
             cursor.execute("""
                 INSERT OR REPLACE INTO respuestas (id_usuario, pregunta, respuesta)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
             """, (usuario_id, pregunta["texto"], respuesta))
 
     conn.commit()
     conn.close()
 
     # Verificar si ya respondió todas las preguntas
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = ?", (usuario_id,))
+    cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     num_respuestas = cursor.fetchone()[0]
     conn.close()
 
