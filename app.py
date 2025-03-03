@@ -8,19 +8,24 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 import joblib
-
+from psycopg2 import pool 
 
 app = Flask(__name__)
 app.secret_key = "supersecreto"
 
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-DATABASE_URL = "postgresql://mi_usuario:mi_contraseña@localhost/mi_base_de_datos" 
-DATASET_PATH = os.path.join(BASE_DIR, 'dataset', 'datos.csv')
+DATABASE_URL = "postgresql://sofia:12345@localhost/mi_base_de_datos" 
+db_pool = pool.SimpleConnectionPool(1, 10, dsn=DATABASE_URL) 
+DATASET_PATH = r"C:\Users\sofia\Downloads\codigoFlask\dataset\datos.csv"
 MODEL_PATH = os.path.join(BASE_DIR, 'modelo_notas.pkl')
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+    return db_pool.getconn()
+
+def release_db_connection(conn):
+    if conn and hasattr(conn, 'closed') and not conn.closed:
+        db_pool.putconn(conn)
 
 def verificar_base_datos():
     conn = get_db_connection()  # Usa la nueva conexión
@@ -29,9 +34,9 @@ def verificar_base_datos():
     # Crear tabla de usuarios (ya está en tu código)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
-        id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_usuario SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
-        contraseña TEXT NOT NULL,
+        contrasena TEXT NOT NULL,
         nombre TEXT NOT NULL,
         apellido TEXT NOT NULL,
         ciclo_1 REAL,
@@ -54,7 +59,7 @@ def verificar_base_datos():
     """)
 
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
 
 # Preguntas de la encuesta
@@ -151,7 +156,7 @@ class CalculoDeRendimiento:
             FROM usuarios WHERE nombre = %s AND apellido = %s
         """, (nombre, apellido))
         rendimiento = cursor.fetchone()
-        conn.close()
+        release_db_connection(conn)
 
         if rendimiento:
             notas = [nota for nota in rendimiento if nota is not None]
@@ -231,6 +236,36 @@ def home1():
     if "usuario_id" in session:
         return redirect(url_for("dashboard"))  # Si ya está logueado, redirige al dashboard(panel)
     return redirect(url_for("registro"))
+
+# Función para guardar en CSV
+def guardar_en_csv(nombre, apellido, email, ciclo_1, ciclo_2, ciclo_3, Apps_usadas):
+    print("🚀 Ejecutando guardar_en_csv()...")  # Debug
+
+    # Si el archivo no existe, crearlo con encabezados
+    if not os.path.exists(DATASET_PATH):
+        df = pd.DataFrame(columns=["Nombre", "Apellido", "Email", "ciclo_1", "ciclo_2", "ciclo_3", "apps usadas"])
+    else:
+        try:
+            df = pd.read_csv(DATASET_PATH)
+        except pd.errors.EmptyDataError:
+            df = pd.DataFrame(columns=["Nombre", "Apellido", "Email", "ciclo_1", "ciclo_2", "ciclo_3", "apps usadas"])
+
+    # Agregar nueva fila con los datos
+    nueva_fila = pd.DataFrame([{
+        "Nombre": nombre,
+        "Apellido": apellido,
+        "Email": email,
+        "ciclo_1": ciclo_1,
+        "ciclo_2": ciclo_2,
+        "ciclo_3": ciclo_3,
+        "apps usadas": Apps_usadas
+    }])
+
+    df = pd.concat([df, nueva_fila], ignore_index=True)
+
+    # Guardar datos asegurando codificación UTF-8 y sin índice
+    df.to_csv(DATASET_PATH, index=False, encoding='utf-8-sig')
+    print(f"✅ Datos guardados en {DATASET_PATH}")
  
 # Ruta de registro de estudiante
 
@@ -238,88 +273,55 @@ def home1():
 def registro():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        contraseña = request.form.get("contraseña", "").strip()
+        contrasena = request.form.get("contrasena", "").strip()
         nombre = request.form.get("nombre", "").strip().title()
         apellido = request.form.get("apellido", "").strip().title()
-
-        # Obtener y limpiar las entradas de notas de los ciclos
-        ciclo_1_str = request.form.get("ciclo_1", "").strip()
-        ciclo_2_str = request.form.get("ciclo_2", "").strip()
-        ciclo_3_str = request.form.get("ciclo_3", "").strip()
-        # Eliminar caracteres no numéricos (excepto '.' y ',') de las cadenas de notas
-        ciclo_1_str = re.sub(r"[^0-9\.,]", "", ciclo_1_str)
-        ciclo_2_str = re.sub(r"[^0-9\.,]", "", ciclo_2_str)
-        ciclo_3_str = re.sub(r"[^0-9\.,]", "", ciclo_3_str)
-        # Convertir a float, manejando casos de cadenas vacías o inválidas
-        if ciclo_1_str in ["", ".", ","]:
-            ciclo_1 = None
-        else:
-            try:
-                ciclo_1 = float(ciclo_1_str.replace(",", "."))
-            except ValueError:
-                ciclo_1 = None
-        if ciclo_2_str in ["", ".", ","]:
-            ciclo_2 = None
-        else:
-            try:
-                ciclo_2 = float(ciclo_2_str.replace(",", "."))
-            except ValueError:
-                ciclo_2 = None
-        if ciclo_3_str in ["", ".", ","]:
-            ciclo_3 = None
-        else:
-            try:
-                ciclo_3 = float(ciclo_3_str.replace(",", "."))
-            except ValueError:
-                ciclo_3 = None
-
         Apps_usadas = request.form.get("Apps_usadas", "").strip()
+
+        # Obtener y limpiar ciclos
+        def limpiar_nota(cadena):
+            cadena = re.sub(r"[^0-9\.,]", "", cadena.strip())
+            return float(cadena.replace(",", ".")) if cadena not in ["", ".", ","] else None
+
+        ciclo_1 = limpiar_nota(request.form.get("ciclo_1", ""))
+        ciclo_2 = limpiar_nota(request.form.get("ciclo_2", ""))
+        ciclo_3 = limpiar_nota(request.form.get("ciclo_3", ""))
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
         # Verificar si el usuario ya existe
         cursor.execute("SELECT * FROM usuarios WHERE email = %s", (email,))
         if cursor.fetchone():
             conn.close()
             return render_template("registro.html", error="Este email ya está registrado. Intenta iniciar sesión.")
 
-        # Insertar el nuevo usuario en SQLite (las notas None se guardarán como NULL)
+        # Insertar el nuevo usuario en la base de datos
         cursor.execute("""
-            INSERT INTO usuarios (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (email, contraseña, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas))
-        conn.commit()
-        conn.close()
+            INSERT INTO usuarios (email, contrasena, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (email, contrasena, nombre, apellido, ciclo_1, ciclo_2, ciclo_3, Apps_usadas))
 
-        # Actualizar también el dataset CSV con la nueva entrada
-        df = pd.read_csv(DATASET_PATH)
-        nueva_fila = pd.DataFrame({
-            "Nombre": [nombre],
-            "Apellido": [apellido],
-            "Email": [email],
-            "ciclo_1": [ciclo_1],
-            "ciclo_2": [ciclo_2],
-            "ciclo_3": [ciclo_3],
-            "apps usadas": [Apps_usadas]
-        })
-        df = pd.concat([df, nueva_fila], ignore_index=True)
-        df.to_csv(DATASET_PATH, index=False)
+        conn.commit()
+        release_db_connection(conn)
+        # Guardar en CSV
+        guardar_en_csv(nombre, apellido, email, ciclo_1, ciclo_2, ciclo_3, Apps_usadas)
 
         return redirect(url_for("login"))
-    return render_template("registro.html") 
+    return render_template("registro.html")
 
 # Ruta de login
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         email = request.form["email"].strip().lower()
-        contraseña = request.form["contraseña"]
+        contrasena = request.form.get("contrasena", "").strip()
 
         conn =  get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = %s AND contraseña = %s", (email, contraseña))
+        cursor.execute("SELECT id_usuario, nombre, apellido FROM usuarios WHERE email = %s AND contrasena = %s", (email, contrasena))
         usuario = cursor.fetchone()
-        conn.close()
+        release_db_connection(conn)
 
         if usuario:
             session["usuario_id"] = usuario[0]
@@ -374,7 +376,7 @@ def encuesta(pagina):
     cursor = conn.cursor()
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas_previas = dict(cursor.fetchall())  
-    conn.close()
+    release_db_connection(conn)
 
     if request.method == "POST":
         conn = get_db_connection()
@@ -383,12 +385,14 @@ def encuesta(pagina):
             respuesta = request.form.get(f'pregunta{inicio + i + 1}')
             if respuesta:
                 cursor.execute("""
-                INSERT OR REPLACE INTO respuestas (id_usuario, pregunta, respuesta)
+                INSERT INTO respuestas (id_usuario, pregunta, respuesta)
                 VALUES (%s, %s, %s)
+                ON CONFLICT (id_usuario, pregunta) 
+                DO UPDATE SET respuesta = EXCLUDED.respuesta;
                 """, (usuario_id, pregunta["texto"], respuesta))
 
         conn.commit()
-        conn.close()
+        release_db_connection(conn)
               
         if pagina == 1:
             return redirect(url_for("imagen2"))
@@ -427,7 +431,7 @@ class NotaPredictor:
         cursor = conn.cursor()
         cursor.execute("SELECT estilo, Apps_usadas, ciclo_1, ciclo_2, ciclo_3 FROM usuarios WHERE estilo IS NOT NULL AND Apps_usadas IS NOT NULL")
         usuarios_data = cursor.fetchall()
-        conn.close()
+        release_db_connection(conn)
 
         if not usuarios_data:
             print("⚠️ No hay datos suficientes para entrenar el modelo.")
@@ -485,8 +489,8 @@ class NotaPredictor:
         return round(nota_predicha, 2)
 
 # Eliminar modelo anterior si existe y reentrenar
-if os.path.exists(MODEL_PATH):
-    os.remove(MODEL_PATH)
+if not os.path.exists(MODEL_PATH):  # Solo si no existe
+    predictor = NotaPredictor()  # Entrena el modelo si no exisTE
 
 # Entrenar el modelo al iniciar
 predictor = NotaPredictor()
@@ -504,7 +508,7 @@ def prediccion_nota():
     cursor = conn.cursor()
     cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = %s", (usuario_id,))
     usuario_data = cursor.fetchone()
-    conn.close()
+    release_db_connection(conn)
 
     if not usuario_data:
         return "No se encontraron datos del usuario", 404
@@ -539,13 +543,13 @@ def resultado():
     
     # Si el usuario no ha respondido todas las preguntas, redirigir a progreso
     if num_respuestas < total_preguntas:
-        conn.close()
+        release_db_connection(conn)
         return render_template("progreso.html", error="Aún no has terminado la encuesta. Responde todas las preguntas para ver tu estilo de aprendizaje.")
 
     # Obtener respuestas del usuario
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas = dict(cursor.fetchall())  
-    conn.close()
+    release_db_connection(conn)
 
     estilos = {"Activo": 0, "Reflexivo": 0, "Teórico": 0, "Pragmático": 0}
 
@@ -561,7 +565,7 @@ def resultado():
     cursor = conn.cursor()
     cursor.execute("UPDATE usuarios SET estilo = %s WHERE id_usuario = %s", (estilo_predominante, usuario_id))
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
     rendimiento = CalculoDeRendimiento.obtener_rendimiento(nombre, apellido)
     promedio_rendimiento = rendimiento["promedio"]
@@ -572,7 +576,7 @@ def resultado():
     cursor = conn.cursor()
     cursor.execute("SELECT estilo, Apps_usadas FROM usuarios WHERE id_usuario = %s", (usuario_id,))
     usuario_data = cursor.fetchone()
-    conn.close()
+    release_db_connection(conn)
 
     if usuario_data:
         estilo_aprendizaje, apps_usadas = usuario_data
@@ -601,32 +605,37 @@ def resultado():
 
 @app.route('/recomendaciones', methods=['GET'])
 def recomendaciones():
-    # Verificar si el usuario ha iniciado sesión
     usuario_id = session.get('usuario_id')
     if not usuario_id:
-        return redirect(url_for('login'))  # Redirigir al login si no ha iniciado sesión
+        return redirect(url_for('login'))
 
-    # Conectar a la base de datos y obtener el estilo de aprendizaje del usuario
-    conn = get_db_connection()('database.db')
-    cursor = conn.cursor()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute("SELECT estilo FROM usuarios WHERE id_usuario = %s", (usuario_id,))
-    resultado = cursor.fetchone()
-    conn.close()
+        cursor.execute("SELECT estilo FROM usuarios WHERE id_usuario = %s", (usuario_id,))
+        resultado = cursor.fetchone()
 
-    if not resultado:
-        return "No se encontró el estilo de aprendizaje.", 404  # Mensaje de error si no hay datos
+        if not resultado:
+            return "No se encontró el estilo de aprendizaje.", 404  
 
-    Estilos = resultado[0]  # Extraer el estilo de aprendizaje
+        Estilos = resultado[0]  
+        print(f"🔍 Estilo recuperado: {Estilos}")
 
-    print(f"🔍 Estilo recuperado: {Estilos}")
-    # Obtener aplicaciones recomendadas según el estilo de aprendizaje
-    recomendaciones = HerramientasEducativas.obtener_herramientas_recomendadas(Estilos)
-    conn.close()
+        recomendaciones = HerramientasEducativas.obtener_herramientas_recomendadas(Estilos)
 
-    print(f"Recomendaciones encontradas para estilo {Estilos}: {recomendaciones}")
+        print(f"Recomendaciones encontradas para estilo {Estilos}: {recomendaciones}")
 
-    return render_template('recomendaciones.html', recomendaciones=recomendaciones, Estilos=Estilos)
+        return render_template('recomendaciones.html', recomendaciones=recomendaciones, Estilos=Estilos)
+
+    except Exception as e:
+        print(f"⚠️ Error en recomendaciones: {e}")
+        return "Ocurrió un error al obtener recomendaciones.", 500
+
+    finally:
+        if conn:
+            release_db_connection(conn)  # ✅ Ahora se libera correctamente
 
 
 @app.route("/ver_progreso")
@@ -641,7 +650,7 @@ def ver_progreso():
     cursor.execute("SELECT pregunta, respuesta FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     respuestas = cursor.fetchall()
     
-    conn.close()
+    release_db_connection(conn)
     respuestas = list(dict.fromkeys(respuestas)) #eliminara duplicados al ver el progreso de las respuestas
 
     return render_template("progreso.html", respuestas=respuestas)
@@ -665,14 +674,14 @@ def guardar_respuestas():
             """, (usuario_id, pregunta["texto"], respuesta))
 
     conn.commit()
-    conn.close()
+    release_db_connection(conn)
 
     # Verificar si ya respondió todas las preguntas
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM respuestas WHERE id_usuario = %s", (usuario_id,))
     num_respuestas = cursor.fetchone()[0]
-    conn.close()
+    release_db_connection(conn)
 
     # Redirigir al usuario a la siguiente página de la encuesta
     if num_respuestas < len(preguntas):

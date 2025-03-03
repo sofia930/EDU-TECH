@@ -1,4 +1,4 @@
-id,Nombre,Apellido,email,ciclo_1,ciclo_2,ciclo_3,Email,apps usadas
+﻿id,Nombre,Apellido,Email,ciclo_1,ciclo_2,ciclo_3,Email.1,apps usadas
 Paul,Casey,paul.casey.1@gslingacademy.com,12.6,16.0,17.4,,,
 Danielle,Sandoval,danielle.sandoval.2@gslingacademy.com,18.0,17.6,18.0,,,
 Tina,Andrews,tina.andrews.3@gslingacademy.com,13.0,15.4,18.8,,,
@@ -2000,19 +2000,6 @@ Madison,Cross,madison.cross.1998@gslingacademy.com,13.6,18.8,15.6,,,
 Brittany,Compton,brittany.compton.1999@gslingacademy.com,19.0,17.6,15.0,,,
 Natalie,Smith,natalie.smith.2000@gslingacademy.com,16.6,18.6,20.0,,,
 Paul,Casey,,12.0,11.0,10.0,paul.casey.1@gslingacademy.com,,
-,Luz,Lopez,,12.0,11.0,13,lopez@gslingacademy.com,"Todoist,Focus To-Do"
-,Tania,Lopez,,11.0,11.0,13,tania@gslingacademy.com,"Todoist,Focus_To-Do"
-,Raul,Cabrera,,11.123,12.007,12.234,raul@gslingacademy.com,"Todoist,Focus To-Do"
-,Ana,Alarcon,,12.001,12.001,12.998,ana@uni.pe,"Duolingo,Photmath,Todoist"
-,Jhasmin,Malpartida,,11.0,12.001,15.001,jhasmin@uni.pe,"Pomodoro,todoist"
-,Jhosselyn,Mamani,,12.0,14.0,13.0,jhosselyn@uni.pe,"Asana,Trello,Notion"
-,Oscar,Benavides,,12.0,11.0,10.0,oscar@uni.pe,"Duolingo,Todoist,Asana"
-,Sofia,Capcha,,13.0,11.0,10.001,sofia@uni.pe,"Evernote,Todoist,Forest App"
-,Aracelli,Villarreal,,10.999,15.004,16.012,ara@uni.pe,"Quizlet,Notion,MindMeister"
-,Estefany,Sotelo,,12.999,10.999,16.999,estefany@uni.pe,"Asana,Trello,Duolingo"
-,Yury,Tello,,13.0,14.0,15.0,yurytello@gmail.com,
-,Luis,Quino,,10.07,12.36,13.112,luis.quino.s@uni.pe,One Note
-,Bryan,Huaytan,,12.241,11.741,9.883,huaytanbryan@gmail.com,DeepSeek
-,Eduardo,Huaman,,11.5,11.25,9.6,eduardo.huaman.d@uni.pe,
-,Pepe,Pedro,,13.0,12.0,12.0,pepe@a.net,
-,Daniel,Figueroa,,11.0,10.0,9.0,hola-2022@outlook.com,
+,Daniela,Lopez,daniela@uni.pe,15.0,12.0,11.0,,"Pomodoro,todoist"
+,Zamira,Rodriguez,zamirah@uni.pe,13.0,13.0,13.0,,"Duolingo,Todoist,Asana"
+,Jhasmin,Flores,jhasmin@uni.pe,14.0,14.0,13.0,,"Evernote,Todoist,Forest App"

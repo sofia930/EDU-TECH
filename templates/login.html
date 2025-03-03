@@ -11,14 +11,14 @@
     {% if error %}
         <p style="color: red;">{{ error }}</p>
     {% endif %}
-    <form method="POST" action="/login">
+    <form action="/login" method="POST">
         <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
-
+        <input type="email" name="email" required>
+    
         <label for="contraseña">Contraseña:</label>
-        <input type="password" id="contraseña" name="contraseña" required><br><br>
-
-        <button type="submit">Ingresar</button>
+        <input type="password" name="contraseña" required>
+    
+        <button type="submit">Iniciar sesión</button>
     </form>
     <a href="/">Volver al inicio</a>
 </body>
