@@ -12,12 +12,14 @@
         <p style="color: red;">{{ error }}</p>
     {% endif %}
     <form action="/login" method="POST">
+        <p>
         <label for="email">Email:</label>
         <input type="email" name="email" required>
-    
+        </p>
+        <p>
         <label for="contraseña">Contraseña:</label>
         <input type="password" name="contraseña" required>
-    
+        </p>
         <button type="submit">Iniciar sesión</button>
     </form>
     <a href="/">Volver al inicio</a>

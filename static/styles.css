@@ -1,3 +1,5 @@
+
+
 body {
     background-image: url('/static/fondo.jpg'); /* Imagen de fondo */
     background-size: cover; /* Cubre toda la pantalla */
@@ -14,7 +16,24 @@ body {
     justify-content: center;
 }
 
+@keyframes moverTitulo {
+    0% { transform: translateX(-20px); }
+    50% { transform: translateX(20px); }
+    100% { transform: translateX(-20px); }
+}
 
+h1 {
+    animation: moverTitulo 2s infinite alternate ease-in-out;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+h1 {
+    font-family: 'Pacifico', cursive;
+    font-size: 50px;
+    color: #FF5733; /* Color Naranja */
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3); /* Sombra */
+}
 /* Contenedor de la página de bienvenida */
 #welcome-container {
     text-align: center;
@@ -24,6 +43,10 @@ body {
     background-color: rgba(255, 255, 255, 0.8); /* Fondo semi-transparente */
     border-radius: 8px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    font-family: 'Pacifico', cursive;
+    font-size: 50px;
+    color: #FF5733; /* Color Naranja */
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3); /* Sombra */
 }
 
 /* Encabezados de bienvenida */
