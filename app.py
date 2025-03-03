@@ -607,7 +607,7 @@ def recomendaciones():
         return redirect(url_for('login'))  # Redirigir al login si no ha iniciado sesión
 
     # Conectar a la base de datos y obtener el estilo de aprendizaje del usuario
-    conn = sqlite3.connect('database.db')
+    conn = get_db_connection()('database.db')
     cursor = conn.cursor()
 
     cursor.execute("SELECT estilo FROM usuarios WHERE id_usuario = %s", (usuario_id,))
