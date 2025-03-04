@@ -16,7 +16,7 @@ app.secret_key = "supersecreto"
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE_URL = "postgresql://sofia:12345@localhost/mi_base_de_datos" 
-db_pool = pool.SimpleConnectionPool(1, 25, dsn=DATABASE_URL) 
+db_pool = pool.SimpleConnectionPool(5, 25, dsn=DATABASE_URL) 
 DATASET_PATH = r"C:\Users\sofia\Downloads\codigoFlask\dataset\datos.csv"
 MODEL_PATH = os.path.join(BASE_DIR, 'modelo_notas.pkl')
 
@@ -361,10 +361,20 @@ def imagen3():
 def imagen4():
     return render_template("imagen4.html")
 
+@app.route('/ver_imagen1')
+def ver_imagen1():
+    session["visto_imagen1"] = True  # Marcar que ya se vio la imagen
+    return redirect(url_for("encuesta", pagina=1))  # Redirigir a la primera pregunta
+
 @app.route('/encuesta/<int:pagina>', methods=['GET', 'POST'])
 def encuesta(pagina):
     if "usuario_id" not in session:
         return redirect(url_for("login"))
+ 
+      # Si es la primera página de la encuesta, primero muestra la imagen
+    if pagina == 1 and not session.get("visto_imagen1"):
+        session["visto_imagen1"] = True  # Marca que ya vio la imagen
+        return redirect(url_for("imagen1"))  # Redirige a la imagen antes de la encuesta
 
     usuario_id = session["usuario_id"]
 

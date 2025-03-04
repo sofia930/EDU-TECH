@@ -14,10 +14,11 @@
         <p>Puedes continuar tu encuesta, ver tu progreso o salir.</p>
 
         <div class="botones">
-            <a href="{{ url_for('encuesta', pagina=1) }}"><button>Continuar Encuesta</button></a>
-            <a href="{{ url_for('ver_progreso') }}"><button>Ver Progreso</button></a>
-            <a href="{{ url_for('logout') }}"><button>Cerrar Sesión</button></a>
+            <a href="{{ url_for('encuesta', pagina=1) }}" class="boton-animado">Continuar Encuesta</a>
+            <a href="{{ url_for('ver_progreso') }}" class="boton-animado">Ver Progreso</a>
+            <a href="{{ url_for('logout') }}" class="boton-animado">Cerrar Sesión</a>
         </div>
+        
     </div>
 
 </body>

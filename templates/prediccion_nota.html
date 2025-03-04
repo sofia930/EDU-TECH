@@ -13,7 +13,9 @@
         <p>Basado en tu estilo de aprendizaje y las aplicaciones usadas, tu nota estimada es:</p>
         <p class="nota">{{ nota_predicha }}</p>
         <a href="{{ url_for('resultado') }}">
-            <button class="boton-volver">🔙 Volver a Resultados</button>
+            <div class="contenedor-botones">
+                <a href="{{ url_for('dashboard') }}" class="boton-cuadrado">Volver</a>
+            </div>
         </a>
     </div>
 

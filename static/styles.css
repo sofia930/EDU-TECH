@@ -144,7 +144,7 @@ p {
     margin-top: 20px;
     padding: 10px 20px;
     font-size: 16px;
-    background-color: #007bff;
+    background-color: white;
     color: white;
     border: none;
     border-radius: 5px;
@@ -155,9 +155,152 @@ p {
     margin-top: 20px;
     padding: 10px 20px;
     font-size: 16px;
-    background-color: #007bff;
+    background-color: white;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
+}
+.boton-verde {
+    background-color: #28a745; /* Verde */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.boton-verde:hover {
+    background-color: #218838; /* Verde más oscuro al pasar el mouse */
+}
+
+.boton-cuadrado {
+    background-color: #28a745; /* Verde */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px; /* Bordes redondeados */
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    margin-top: 10px;
+}
+
+.boton-cuadrado:hover {
+    background-color: #218838; /* Verde más oscuro en hover */
+}
+
+.contenedor-botones {
+    display: flex;
+    justify-content: center; /* Centra los botones en la misma línea */
+    gap: 15px; /* Espaciado entre botones */
+    margin-top: 20px;
+}
+
+.boton-animado {
+    position: relative;
+    display: inline-block;
+    text-transform: uppercase;
+    margin: 10px 15px;
+    padding: 10px 20px;
+    text-decoration: none;
+    color: white; /* Texto blanco */
+    font-family: sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    border: 2px solid #6FCF97; /* Verde menta */
+    background-color: #6FCF97; /* Fondo verde menta */
+    transition: .5s;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.boton-animado:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-top: 2px solid #09691f; /* Verde más oscuro */
+    border-bottom: 2px solid #09691f;
+    transform: scaleY(2);
+    opacity: 0;
+    transition: .3s;
+}
+
+.boton-animado:after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color:#09691f; /* Hover en verde más oscuro */
+    transform: scale(0);
+    opacity: 0;
+    transition: .3s;
+    z-index: -1;
+}
+
+.boton-animado:hover {
+    color: white; /* Mantener texto blanco en hover */
+    border-color: #09691f; /* Cambiar borde en hover */
+}
+
+.boton-animado:hover:before {
+    transform: scaleY(1);
+    opacity: 1;
+}
+
+.boton-animado:hover:after {
+    transform: scaleY(1);
+    opacity: 1;
+}
+.boton-container {
+    display: flex;
+    justify-content: center; /* Centrar los botones horizontalmente */
+    align-items: center; /* Alinear verticalmente */
+    gap: 15px; /* Espaciado entre botones */
+    margin-top: 20px;
+}
+.botones {
+    display: flex;
+    justify-content: center; /* Centrar los botones en una línea */
+    gap: 15px; /* Espaciado entre botones */
+    margin-top: 20px;
+}
+
+.botones .boton-animado {
+    padding: 12px 24px; /* Ajustar el tamaño */
+    font-size: 18px;
+    text-align: center;
+}
+@import url('https://fonts.googleapis.com/css?family=Khula:700');
+
+.console-container {
+    font-family: 'Khula', sans-serif;
+    font-size: 1em; /* Tamaño reducido */
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: green;
+    height: auto;
+    margin-bottom: 20px;
+    max-width: 100%; /* Evita que se salga del contenedor */
+    overflow: hidden; /* Previene que el texto se desborde */
+}
+
+.console-underscore {
+    display: inline-block;
+    position: relative;
+    top: -0.14em;
+    left: 10px;
 }

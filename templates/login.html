@@ -13,15 +13,21 @@
     {% endif %}
     <form action="/login" method="POST">
         <p>
-        <label for="email">Email:</label>
-        <input type="email" name="email" required>
+            <label for="email">Email:</label>
+            <input type="email" name="email" required>
         </p>
         <p>
-        <label for="contraseña">Contraseña:</label>
-        <input type="password" name="contraseña" required>
+            <label for="contraseña">Contraseña:</label>
+            <input type="password" name="contraseña" required>
         </p>
-        <button type="submit">Iniciar sesión</button>
+        
+        <!-- Contenedor para los botones -->
+        <div class="boton-container">
+            <button type="submit" class="boton-animado">Iniciar sesión</button>
+            <a href="/" class="boton-animado">Volver al inicio</a>
+        </div>
+        
+        
     </form>
-    <a href="/">Volver al inicio</a>
 </body>
 </html>

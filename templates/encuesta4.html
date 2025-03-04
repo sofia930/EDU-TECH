@@ -9,14 +9,35 @@
             background-image: url("{{ url_for('static', filename='fondo4.jpg') }}");
             background-size: cover;
         }
+        .console-container {
+            font-family: 'Khula', sans-serif;
+            font-size: 2em;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: black;
+            height: 80px;
+            margin-bottom: 20px;
+        }
+        .console-underscore {
+            display: inline-block;
+            position: relative;
+            top: -0.14em;
+            left: 10px;
+        }
     </style>
 </head>
 <body>
 
-    <h2>Encuesta - Parte 4</h2>
+    <div class="console-container">
+        <span id="text"></span><span class="console-underscore" id="console">_</span>
+    </div>
+
     <form method="POST">
         {% for pregunta in preguntas %}
             <p> {{ pregunta.texto }}</p>
+    
     
             <label>
                 <input type="radio" name="pregunta{{ loop.index + (pagina - 1) * 20 }}" value="+" 
@@ -33,21 +54,45 @@
     
         <div class="botones">
             {% if pagina > 1 %}
-            <a href="{{ url_for('encuesta', pagina=pagina-1) }}">
-                <button type="button">Atrás</button>
-            </a>
-        {% else %}
-            <a href="{{ url_for('dashboard') }}">
-                <button type="button">Volver al inicio</button>
-            </a>
-        {% endif %}
-    
-            <button type="submit">Siguiente</button>
+                <a href="{{ url_for('encuesta', pagina=pagina-1) }}" class="boton-animado">Atrás</a>
+            {% else %}
+                <a href="{{ url_for('dashboard') }}" class="boton-animado">Volver al inicio</a>
+            {% endif %}
+            
+            <button type="submit" class="boton-animado">Siguiente</button>
         </div>
+        
     </form>
-    
+
+    <script>
+        var words = ['Encuesta - Parte 4'];
+        var letterCount = 0;
+        var target = document.getElementById("text");
+        var consoleUnderscore = document.getElementById("console");
+
+        function typeEffect() {
+            if (letterCount < words[0].length) {
+                target.innerHTML += words[0][letterCount];
+                letterCount++;
+                setTimeout(typeEffect, 100);
+            } else {
+                setTimeout(() => {
+                    target.innerHTML = '';
+                    letterCount = 0;
+                    typeEffect();
+                }, 3000);
+            }
+        }
+
+        function toggleUnderscore() {
+            consoleUnderscore.style.visibility = (consoleUnderscore.style.visibility === 'hidden' ? 'visible' : 'hidden');
+            setTimeout(toggleUnderscore, 400);
+        }
+
+        typeEffect();
+        toggleUnderscore();
+    </script>
 
 </body>
-
 
 </html>

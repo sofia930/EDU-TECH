@@ -1,25 +1,56 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido a EDU-TECH</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bienvenido a EDU-TECH</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    </head>
 <body>
 
     <div id="welcome-container">
-        <h1>Bienvenido a EDU-TECH</h1>
+        <div class="console-container">
+            <span id="text"></span><span class="console-underscore" id="console">_</span>
+        </div>
         <p>Esta página te ayudará a mejorar tus métodos de estudio mediante aplicaciones educativas.</p>
         <p>¿SABIAS QUE CADA PERSONA TIENE UN ESTILO DE APRENDIZAJE?</p>
         <p>Descubre cuál es tu estilo de aprendizaje con nuestro cuestionario basado en el modelo de Honey-Alonso.</p>
         <p>Según tus respuestas, te recomendaremos herramientas y apps adaptadas a tu forma de aprender.</p>
 
         <div class="botones">
-            <a href="{{ url_for('registro') }}"><button>Registrarse</button></a>
-            <a href="{{ url_for('login') }}"><button>Iniciar Sesión</button></a>
+            <a href="{{ url_for('registro') }}" class="boton-animado">Registrarse</a>
+            <a href="{{ url_for('login') }}" class="boton-animado">Iniciar Sesión</a>
         </div>
+        
+        
     </div>
-
+    <script>
+        var words = ['Bienvenido a EDU-TECH'];
+        var letterCount = 0;
+        var target = document.getElementById("text");
+        var consoleUnderscore = document.getElementById("console");
+    
+        function typeEffect() {
+            if (letterCount < words[0].length) {
+                target.innerHTML += words[0][letterCount];
+                letterCount++;
+                setTimeout(typeEffect, 100);
+            } else {
+                setTimeout(() => {
+                    target.innerHTML = '';
+                    letterCount = 0;
+                    typeEffect();
+                }, 3000);
+            }
+        }
+    
+        function toggleUnderscore() {
+            consoleUnderscore.style.visibility = (consoleUnderscore.style.visibility === 'hidden' ? 'visible' : 'hidden');
+            setTimeout(toggleUnderscore, 400);
+        }
+    
+        typeEffect();
+        toggleUnderscore();
+    </script>
 </body>
 </html>

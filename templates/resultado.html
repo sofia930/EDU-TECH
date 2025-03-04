@@ -19,12 +19,11 @@
         <p>Tu escala de clasificación es: <strong>{{ tipo_rendimiento }}</strong></p>
 
         <div class="botones">
-            <a href="{{ url_for('dashboard') }}"><button>Volver</button></a>
-            <a href="{{ url_for('encuesta', pagina=ultima_pagina) }}"><button>Volver a realizar la encuesta</button></a>
-            <a href="{{ url_for('recomendaciones') }}" ><button>Ver recomendaciones</button></a>
-            <a href="{{ url_for('prediccion_nota') }}"><button>📊 Ver Predicción de Nota</button></a>
-           
-    </div>
+            <a href="{{ url_for('dashboard') }}" class="boton-animado">Volver</a>
+            <a href="{{ url_for('encuesta', pagina=ultima_pagina) }}" class="boton-animado">Volver a realizar la encuesta</a>
+            <a href="{{ url_for('recomendaciones') }}" class="boton-animado">Ver recomendaciones</a>
+            <a href="{{ url_for('prediccion_nota') }}" class="boton-animado">📊 Ver Predicción de Nota</a>
+        </div>
 
 </body>
 </html>
