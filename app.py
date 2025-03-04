@@ -16,7 +16,7 @@ app.secret_key = "supersecreto"
 # Rutas de archivos
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE_URL = "postgresql://sofia:12345@localhost/mi_base_de_datos" 
-db_pool = pool.SimpleConnectionPool(1, 10, dsn=DATABASE_URL) 
+db_pool = pool.SimpleConnectionPool(1, 25, dsn=DATABASE_URL) 
 DATASET_PATH = r"C:\Users\sofia\Downloads\codigoFlask\dataset\datos.csv"
 MODEL_PATH = os.path.join(BASE_DIR, 'modelo_notas.pkl')
 
